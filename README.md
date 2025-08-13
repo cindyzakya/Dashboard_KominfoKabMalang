@@ -77,6 +77,13 @@ Dashboard ini dapat diintegrasikan (**embed**) ke dalam website resmi Dinas Komi
 
 ---
 
+## 👨‍💻 Tim Pengembang
+- `@rosaaurelia`
+- `@cindyzakya`
+- `@anitamds`
+
+---
+
 ## 📝 Lisensi
 Proyek ini dibuat untuk tujuan edukasi dan publikasi data terbuka. Dataset berasal dari **Kabupaten Malang Satu Data (KAMASUTA)** yang digunakan untuk analisis dan visualisasi data publik.
 
