@@ -3,8 +3,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
-import requests
-from io import StringIO
 import re
 
 # Konfigurasi halaman
@@ -172,12 +170,12 @@ def clean_numeric_columns(df, exclude_columns=None):
     return df_clean
 
 # ===========================
-# DATA LOADING FROM GITHUB
+# DATA LOADING FROM LOCAL FILES
 # ===========================
 @st.cache_data
-def load_github_data():
-    """Load data from GitHub repository"""
-    github_base_url = "https://raw.githubusercontent.com/cindyzakya/Dashboard_KominfokabMalang/main/data/sosial/"
+def load_local_data():
+    """Load data from local CSV files"""
+    data_path = "data/sosial/"
     
     file_list = [
         "bantuan_sosial.csv",
@@ -197,51 +195,52 @@ def load_github_data():
     
     for filename in file_list:
         try:
-            url = github_base_url + filename
-            response = requests.get(url)
+            file_path = data_path + filename
+            df = pd.read_csv(file_path)
+            df.columns = df.columns.str.strip()
             
-            if response.status_code == 200:
-                df = pd.read_csv(StringIO(response.text))
-                df.columns = df.columns.str.strip()
-                
-                if filename == "jenis_bencana.csv":
-                    try:
-                        df_clean = clean_numeric_columns(df, exclude_columns=['Jenis_Bencana'])
-                        
-                        if 'Jenis_Bencana' in df_clean.columns:
-                            df_clean['Jenis_Bencana'] = df_clean['Jenis_Bencana'].astype(str)
-                            df_clean['Jenis_Bencana_Nama'] = df_clean['Jenis_Bencana'].map(JENIS_BENCANA_MAPPING)
-                            
-                            mask = df_clean['Jenis_Bencana_Nama'].isna()
-                            if mask.any():
-                                df_clean.loc[mask, 'Jenis_Bencana_Nama'] = (
-                                    df_clean.loc[mask, 'Jenis_Bencana']
-                                    .str.replace('_', ' ')
-                                    .str.title()
-                                )
-                        
-                    except Exception as e:
-                        df_clean = clean_numeric_columns(df, exclude_columns=['Jenis_Bencana'])
-                
-                elif filename == "bencana_alam.csv":
-                    df_clean = clean_numeric_columns(df)
-                    for col in df_clean.columns:
-                        if 'kerugian' in col.lower():
-                            df_clean[col + '_Numeric'] = df_clean[col].apply(extract_rupiah_value)
+            if filename == "jenis_bencana.csv":
+                try:
+                    df_clean = clean_numeric_columns(df, exclude_columns=['Jenis_Bencana'])
                     
-                else:
-                    df_clean = clean_numeric_columns(df)
+                    if 'Jenis_Bencana' in df_clean.columns:
+                        df_clean['Jenis_Bencana'] = df_clean['Jenis_Bencana'].astype(str)
+                        df_clean['Jenis_Bencana_Nama'] = df_clean['Jenis_Bencana'].map(JENIS_BENCANA_MAPPING)
+                        
+                        mask = df_clean['Jenis_Bencana_Nama'].isna()
+                        if mask.any():
+                            df_clean.loc[mask, 'Jenis_Bencana_Nama'] = (
+                                df_clean.loc[mask, 'Jenis_Bencana']
+                                .str.replace('_', ' ')
+                                .str.title()
+                            )
+                    
+                except Exception as e:
+                    df_clean = clean_numeric_columns(df, exclude_columns=['Jenis_Bencana'])
+            
+            elif filename == "bencana_alam.csv":
+                df_clean = clean_numeric_columns(df)
+                for col in df_clean.columns:
+                    if 'kerugian' in col.lower():
+                        df_clean[col + '_Numeric'] = df_clean[col].apply(extract_rupiah_value)
                 
-                clean_name = filename.replace('.csv', '').replace('_', ' ').title()
-                data[clean_name] = df_clean
-                
+            else:
+                df_clean = clean_numeric_columns(df)
+            
+            clean_name = filename.replace('.csv', '').replace('_', ' ').title()
+            data[clean_name] = df_clean
+            
+        except FileNotFoundError:
+            st.error(f"File not found: {file_path}. Please make sure the CSV file is in the correct directory.")
+            continue
         except Exception as e:
+            st.error(f"Error loading {filename}: {str(e)}")
             continue
     
     return data
 
 # ===========================
-# FUNCTION TO FILTER YEARS (NEW)
+# FUNCTION TO FILTER YEARS
 # ===========================
 def filter_available_years(years_list):
     """Filter years to only include 2020-2024"""
@@ -249,7 +248,7 @@ def filter_available_years(years_list):
     for year in years_list:
         try:
             year_int = int(year)
-            if 2020 <= year_int <= 2024:  # Only include years from 2020 to 2024
+            if 2020 <= year_int <= 2024:  
                 valid_years.append(year_int)
         except (ValueError, TypeError):
             continue
@@ -874,8 +873,8 @@ def main():
     
     try:
         # Load data
-        with st.spinner("📊 Loading data from GitHub..."):
-            data = load_github_data()
+        with st.spinner("📊 Loading data..."):
+            data = load_local_data()
         
         if not data:
             st.error("❌ Tidak ada data yang berhasil dimuat!")
@@ -1080,7 +1079,7 @@ def main():
         ---
         <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px;'>
             <p><strong>📊 Dashboard Sosial Kabupaten Malang</strong></p>
-            <p><strong>🔗 Data Source:</strong> GitHub Repository | <strong>🕒 Generated:</strong> {current_time}</p>
+            <p><strong>🔗 Data Source:</strong> Local CSV Files | <strong>🕒 Generated:</strong> {current_time}</p>
             <p><strong>💡 Insight:</strong> Dashboard ini menyediakan visualisasi data sosial untuk mendukung pengambilan keputusan (Periode 2020-2024)</p>
         </div>
         """, unsafe_allow_html=True)
