@@ -56,22 +56,26 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ===========================
-# MAPPING JENIS BENCANA (SOLUTION!)
+# MAPPING JENIS BENCANA
 # ===========================
 JENIS_BENCANA_MAPPING = {
-    1: "Banjir",
-    2: "Gempa Bumi", 
-    3: "Tanah Longsor",
-    4: "Banjir",
-    5: "Tsunami",
-    6: "Letusan Gunung Api",
-    7: "Kekeringan",
-    8: "Gelombang Ekstrem dan Abrasi",
-    9: "Cuaca Ekstrem Angin Puting Beliung",
-    10: "Kebakaran Hutan dan Lahan",
-    11: "Kebakaran Gedung dan Pemukiman",
-    12: "Epidemi dan Wabah Penyakit",
-    13: "Gagal Teknologi"
+    "Gempa_Bumi": "Gempa Bumi",
+    "Tsunami": "Tsunami", 
+    "Banjir": "Banjir",
+    "Tanah_Longsor": "Tanah Longsor",
+    "Letusan_Gunung_Api": "Letusan Gunung Api",
+    "Kekeringan": "Kekeringan",
+    "Gelombang_Ekstrem_dan_Abrasi": "Gelombang Ekstrem dan Abrasi",
+    "Cuaca_Ekstrem_Angin_Puting_Beliung": "Cuaca Ekstrem Angin Puting Beliung",
+    "Kebakaran_Hutan_dan_Lahan": "Kebakaran Hutan dan Lahan",
+    "Kebakaran_Gedung_dan_Pemukiman": "Kebakaran Gedung dan Pemukiman",
+    "Epidemi_dan_Wabah_Penyakit": "Epidemi dan Wabah Penyakit",
+    "Gagal_Teknologi": "Gagal Teknologi",
+    "Konflik_Sosial": "Konflik Sosial",
+    "Angin_Kencang": "Angin Kencang",
+    "Kebakaran": "Kebakaran",
+    "Erupsi_Gunung_Api": "Erupsi Gunung Api",
+    "Pohon_Tumbang": "Pohon Tumbang"
 }
 
 # ===========================
@@ -88,7 +92,6 @@ def convert_indonesian_number(value):
         if str_value.isdigit():
             return int(str_value)
         
-        # Handle Indonesian format with dots as thousands separator
         if '.' in str_value and ',' not in str_value:
             parts = str_value.split('.')
             if len(parts) >= 2 and all(part.isdigit() for part in parts):
@@ -101,12 +104,52 @@ def convert_indonesian_number(value):
     except (ValueError, TypeError):
         return 0
 
-def clean_numeric_columns(df):
-    """Clean numeric columns"""
+def extract_rupiah_value(value):
+    """Extract numeric value from Indonesian Rupiah format"""
+    if pd.isna(value) or value == '':
+        return 0
+    
+    str_val = str(value).strip()
+    
+    if str_val.lower() in ['rp0', '0', 'rp 0']:
+        return 0
+    
+    str_val = str_val.replace('Rp', '').replace('rp', '').strip()
+    
+    try:
+        if '.' in str_val and ',' not in str_val:
+            parts = str_val.split('.')
+            if len(parts) >= 2:
+                if len(parts[0]) <= 3 and all(len(part) == 3 for part in parts[1:]) and all(part.isdigit() for part in parts):
+                    clean_number = str_val.replace('.', '')
+                    return int(clean_number)
+        
+        if ',' in str_val:
+            str_val = str_val.replace(',', '.')
+        
+        return int(float(str_val))
+        
+    except (ValueError, TypeError):
+        digits_only = ''.join(filter(str.isdigit, str_val))
+        if digits_only:
+            return int(digits_only)
+        return 0
+
+def clean_numeric_columns(df, exclude_columns=None):
+    """Clean numeric columns but exclude specified columns"""
+    if exclude_columns is None:
+        exclude_columns = []
+    
     df_clean = df.copy()
-    numeric_patterns = ['jumlah', 'total', 'count', 'peserta', 'penerima', 'kasus', 'bencana', 'kerugian']
+    numeric_patterns = ['jumlah', 'total', 'count', 'peserta', 'penerima', 'kasus', 'bencana']
     
     for col in df_clean.columns:
+        if col in exclude_columns:
+            continue
+        
+        if 'kerugian' in col.lower():
+            continue
+            
         col_lower = col.lower().strip()
         if any(pattern in col_lower for pattern in numeric_patterns):
             df_clean[col] = df_clean[col].apply(convert_indonesian_number)
@@ -133,7 +176,7 @@ def clean_numeric_columns(df):
 # ===========================
 @st.cache_data
 def load_github_data():
-    """Load data from GitHub repository with jenis bencana mapping"""
+    """Load data from GitHub repository"""
     github_base_url = "https://raw.githubusercontent.com/cindyzakya/Dashboard_KominfokabMalang/main/data/sosial/"
     
     file_list = [
@@ -151,7 +194,6 @@ def load_github_data():
     ]
     
     data = {}
-    loading_info = []
     
     for filename in file_list:
         try:
@@ -162,58 +204,39 @@ def load_github_data():
                 df = pd.read_csv(StringIO(response.text))
                 df.columns = df.columns.str.strip()
                 
-                # Special handling for jenis_bencana.csv
                 if filename == "jenis_bencana.csv":
-                    # Clean numeric columns first
+                    try:
+                        df_clean = clean_numeric_columns(df, exclude_columns=['Jenis_Bencana'])
+                        
+                        if 'Jenis_Bencana' in df_clean.columns:
+                            df_clean['Jenis_Bencana'] = df_clean['Jenis_Bencana'].astype(str)
+                            df_clean['Jenis_Bencana_Nama'] = df_clean['Jenis_Bencana'].map(JENIS_BENCANA_MAPPING)
+                            
+                            mask = df_clean['Jenis_Bencana_Nama'].isna()
+                            if mask.any():
+                                df_clean.loc[mask, 'Jenis_Bencana_Nama'] = (
+                                    df_clean.loc[mask, 'Jenis_Bencana']
+                                    .str.replace('_', ' ')
+                                    .str.title()
+                                )
+                        
+                    except Exception as e:
+                        df_clean = clean_numeric_columns(df, exclude_columns=['Jenis_Bencana'])
+                
+                elif filename == "bencana_alam.csv":
                     df_clean = clean_numeric_columns(df)
-                    
-                    # Map jenis bencana codes to names
-                    if 'Jenis_Bencana' in df_clean.columns:
-                        # Convert codes to descriptive names
-                        df_clean['Jenis_Bencana_Nama'] = df_clean['Jenis_Bencana'].map(JENIS_BENCANA_MAPPING)
-                        
-                        # If mapping fails, create generic names
-                        df_clean['Jenis_Bencana_Nama'] = df_clean['Jenis_Bencana_Nama'].fillna(
-                            'Jenis Bencana ' + df_clean['Jenis_Bencana'].astype(str)
-                        )
-                        
-                        loading_info.append(f"🎯 JENIS BENCANA FIXED:")
-                        loading_info.append(f"   ✅ Mapped {df_clean['Jenis_Bencana'].nunique()} jenis bencana codes to names")
-                        loading_info.append(f"   📊 Shape: {df_clean.shape}")
-                        loading_info.append(f"   📊 Columns: {list(df_clean.columns)}")
-                        loading_info.append(f"   📊 Sample mapping:")
-                        
-                        sample_mapping = df_clean[['Jenis_Bencana', 'Jenis_Bencana_Nama']].drop_duplicates().head(5)
-                        for _, row in sample_mapping.iterrows():
-                            loading_info.append(f"      {row['Jenis_Bencana']} → {row['Jenis_Bencana_Nama']}")
+                    for col in df_clean.columns:
+                        if 'kerugian' in col.lower():
+                            df_clean[col + '_Numeric'] = df_clean[col].apply(extract_rupiah_value)
                     
                 else:
-                    # Regular cleaning for other files
                     df_clean = clean_numeric_columns(df)
-                    loading_info.append(f"✅ {filename}: {len(df_clean)} rows, {len(df_clean.columns)} cols")
                 
                 clean_name = filename.replace('.csv', '').replace('_', ' ').title()
                 data[clean_name] = df_clean
                 
-            else:
-                loading_info.append(f"❌ Failed to load {filename} (Status: {response.status_code})")
-                
         except Exception as e:
-            loading_info.append(f"❌ Error loading {filename}: {str(e)}")
-    
-    # Display loading info
-    with st.sidebar:
-        st.markdown("### 📊 Data Loading Status")
-        for info in loading_info:
-            if "🎯" in info or "📊" in info or "✅" in info:
-                if "🎯" in info:
-                    st.success(info)
-                else:
-                    st.write(info)
-            elif info.startswith("❌"):
-                st.error(info)
-            else:
-                st.write(info)
+            continue
     
     return data
 
@@ -250,24 +273,24 @@ def calculate_kpis(data, selected_years):
             kpis['total_penerima_bantuan'] = int(total)
         
         # 2. Total Bencana
-        if 'Bencana Alam' in data:
-            df = data['Bencana Alam'].copy()
+        if 'Jenis Bencana' in data:
+            df = data['Jenis Bencana'].copy()
             
             tahun_col = None
-            bencana_col = None
+            jumlah_col = None
             
             for col in df.columns:
                 col_lower = col.lower().strip()
                 if 'tahun' in col_lower:
                     tahun_col = col
-                elif 'bencana' in col_lower and df[col].dtype in ['int64', 'float64']:
-                    bencana_col = col
+                elif 'jumlah' in col_lower and df[col].dtype in ['int64', 'float64']:
+                    jumlah_col = col
             
             if tahun_col and "Semua Tahun" not in selected_years:
                 df = df[df[tahun_col].isin(selected_years)]
             
-            if bencana_col:
-                total = df[bencana_col].sum()
+            if jumlah_col:
+                total = df[jumlah_col].sum()
             else:
                 total = len(df)
             
@@ -346,7 +369,6 @@ def calculate_kpis(data, selected_years):
             kpis['peserta_kb'] = int(total)
             
     except Exception as e:
-        st.error(f"Error calculating KPIs: {str(e)}")
         kpis = {
             'total_penerima_bantuan': 0,
             'total_bencana': 0,
@@ -358,40 +380,25 @@ def calculate_kpis(data, selected_years):
     return kpis
 
 # ===========================
-# JENIS BENCANA CHART (FIXED!)
+# CHART FUNCTIONS
 # ===========================
 def create_jenis_bencana_pie_chart(data, selected_years):
-    """6. Jenis Bencana - Pie Chart (FIXED WITH MAPPING)"""
+    """6. Jenis Bencana - Pie Chart"""
     try:
         if 'Jenis Bencana' not in data:
-            st.error("❌ Dataset 'Jenis Bencana' tidak ditemukan")
             return None
         
         df = data['Jenis Bencana'].copy()
         
-        # Debug info
-        with st.sidebar:
-            st.markdown("### 🔍 Jenis Bencana Debug")
-            st.write(f"📊 Shape: {df.shape}")
-            st.write(f"📊 Columns: {list(df.columns)}")
-            st.write("📊 Sample data:")
-            st.dataframe(df.head())
-        
-        # Use mapped names if available, otherwise use original
         if 'Jenis_Bencana_Nama' in df.columns:
-            jenis_col = 'Jenis_Bencana_Nama'  # Use mapped names
-            st.sidebar.write("✅ Using mapped jenis bencana names")
+            jenis_col = 'Jenis_Bencana_Nama'
         else:
-            # Fallback: convert codes to generic names
             if 'Jenis_Bencana' in df.columns:
-                df['Jenis_Bencana_Display'] = 'Jenis Bencana ' + df['Jenis_Bencana'].astype(str)
+                df['Jenis_Bencana_Display'] = df['Jenis_Bencana'].astype(str).str.replace('_', ' ').str.title()
                 jenis_col = 'Jenis_Bencana_Display'
-                st.sidebar.write("⚠️ Using generic jenis bencana names")
             else:
-                st.error("❌ No suitable jenis bencana column found")
                 return None
         
-        # Find jumlah column
         jumlah_col = None
         for col in df.columns:
             if 'jumlah' in col.lower() and df[col].dtype in ['int64', 'float64']:
@@ -399,12 +406,8 @@ def create_jenis_bencana_pie_chart(data, selected_years):
                 break
         
         if not jumlah_col:
-            st.error("❌ Jumlah column not found")
             return None
         
-        st.sidebar.write(f"📈 Using columns: {jenis_col} (names), {jumlah_col} (values)")
-        
-        # Filter by year if needed
         tahun_col = None
         for col in df.columns:
             if 'tahun' in col.lower():
@@ -413,72 +416,41 @@ def create_jenis_bencana_pie_chart(data, selected_years):
         
         if tahun_col and "Semua Tahun" not in selected_years:
             df_filtered = df[df[tahun_col].isin(selected_years)]
-            st.sidebar.write(f"📅 After year filter: {df_filtered.shape}")
         else:
             df_filtered = df
-            st.sidebar.write(f"📅 No year filter: {df_filtered.shape}")
         
         if df_filtered.empty:
-            st.warning("⚠️ No data after filtering")
             return None
         
-        # Group by jenis bencana names and sum
         chart_data = df_filtered.groupby(jenis_col)[jumlah_col].sum().reset_index()
-        chart_data = chart_data[chart_data[jumlah_col] > 0]  # Remove zeros
-        
-        st.sidebar.write(f"📈 Final chart data:")
-        st.sidebar.dataframe(chart_data)
+        chart_data = chart_data[chart_data[jumlah_col] > 0]
         
         if chart_data.empty:
-            st.warning("⚠️ No data for chart")
             return None
         
-        # Create pie chart with beautiful colors
         fig = px.pie(
             chart_data,
             values=jumlah_col,
             names=jenis_col,
-            title="Jenis Bencana",
+            title="Distribusi Jenis Bencana",
             color_discrete_sequence=[
                 '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
-                '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
-                '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA',
-                '#F1948A', '#AED6F1', '#A9DFBF', '#F9E79F'
+                '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'
             ]
         )
         
         fig.update_traces(
             textposition='inside', 
             textinfo='percent+label',
-            hovertemplate='<b>%{label}</b><br>' +
-                         'Jumlah: %{value}<br>' +
-                         'Persentase: %{percent}<br>' +
-                         '<extra></extra>'
+            hovertemplate='<b>%{label}</b><br>Jumlah: %{value}<br>Persentase: %{percent}<br><extra></extra>'
         )
         
-        fig.update_layout(
-            height=400,
-            showlegend=True,
-            legend=dict(
-                orientation="v", 
-                yanchor="middle", 
-                y=0.5, 
-                xanchor="left", 
-                x=1.05
-            )
-        )
-        
+        fig.update_layout(height=400)
         return fig
         
     except Exception as e:
-        st.error(f"❌ Error creating jenis bencana chart: {str(e)}")
-        import traceback
-        st.code(traceback.format_exc())
         return None
 
-# ===========================
-# OTHER CHART FUNCTIONS
-# ===========================
 def create_bencana_kecamatan_chart(data, selected_years):
     """7. Bencana per Kecamatan"""
     try:
@@ -523,7 +495,6 @@ def create_bencana_kecamatan_chart(data, selected_years):
         return fig
         
     except Exception as e:
-        st.error(f"Error creating bencana kecamatan chart: {str(e)}")
         return None
 
 def create_kerugian_table(data, selected_years):
@@ -544,7 +515,7 @@ def create_kerugian_table(data, selected_years):
                 kecamatan_col = col
             elif 'tahun' in col_lower:
                 tahun_col = col
-            elif 'kerugian' in col_lower:
+            elif 'kerugian' in col_lower and 'numeric' not in col_lower:
                 kerugian_col = col
         
         if not all([kecamatan_col, tahun_col, kerugian_col]):
@@ -553,15 +524,20 @@ def create_kerugian_table(data, selected_years):
         if "Semua Tahun" not in selected_years:
             df = df[df[tahun_col].isin(selected_years)]
         
-        table_data = df.groupby([kecamatan_col, tahun_col])[kerugian_col].sum().reset_index()
-        table_data['Kerugian_Formatted'] = table_data[kerugian_col].apply(lambda x: f"Rp {x:,.0f}")
+        df['Kerugian_Numeric'] = df[kerugian_col].apply(extract_rupiah_value)
+        
+        table_data = df.groupby([kecamatan_col, tahun_col])['Kerugian_Numeric'].sum().reset_index()
+        table_data['Kerugian_Formatted'] = table_data['Kerugian_Numeric'].apply(
+            lambda x: f"Rp {x:,.0f}" if x > 0 else "Rp 0"
+        )
+        
+        table_data = table_data.sort_values('Kerugian_Numeric', ascending=False)
         
         return table_data[[kecamatan_col, tahun_col, 'Kerugian_Formatted']].rename(
             columns={'Kerugian_Formatted': 'Kerugian_Rupiah'}
         )
         
     except Exception as e:
-        st.error(f"Error creating kerugian table: {str(e)}")
         return None
 
 def create_kekerasan_gender_chart(data, selected_years):
@@ -614,7 +590,258 @@ def create_kekerasan_gender_chart(data, selected_years):
         return fig
         
     except Exception as e:
-        st.error(f"Error creating kekerasan gender chart: {str(e)}")
+        return None
+
+def create_penerima_per_tahun_chart(data, selected_years):
+    """10. Rata-rata dan Jumlah Penerima per Tahun - Combo Chart"""
+    try:
+        if 'Bantuan Sosial' not in data:
+            return None
+        
+        df = data['Bantuan Sosial'].copy()
+        
+        tahun_col = None
+        penerima_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'tahun' in col_lower:
+                tahun_col = col
+            elif 'penerima' in col_lower:
+                penerima_col = col
+        
+        if not all([tahun_col, penerima_col]):
+            return None
+        
+        if "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        # Group by year
+        yearly_data = df.groupby(tahun_col)[penerima_col].agg(['sum', 'mean']).reset_index()
+        yearly_data.columns = [tahun_col, 'Total_Penerima', 'Rata_rata_Penerima']
+        
+        fig = go.Figure()
+        
+        # Add bar chart for total
+        fig.add_trace(go.Bar(
+            x=yearly_data[tahun_col],
+            y=yearly_data['Total_Penerima'],
+            name='Total Penerima',
+            marker_color='#3498db',
+            yaxis='y'
+        ))
+        
+        # Add line chart for average
+        fig.add_trace(go.Scatter(
+            x=yearly_data[tahun_col],
+            y=yearly_data['Rata_rata_Penerima'],
+            mode='lines+markers',
+            name='Rata-rata Penerima',
+            line=dict(color='#e74c3c', width=3),
+            marker=dict(size=8),
+            yaxis='y2'
+        ))
+        
+        fig.update_layout(
+            title='Rata-rata dan Jumlah Penerima per Tahun',
+            xaxis_title='Tahun',
+            yaxis=dict(
+                title='Total Penerima',
+                side='left'
+            ),
+            yaxis2=dict(
+                title='Rata-rata Penerima',
+                side='right',
+                overlaying='y'
+            ),
+            height=400,
+            legend=dict(x=0, y=1)
+        )
+        
+        return fig
+        
+    except Exception as e:
+        return None
+
+def create_bantuan_donut_chart(data, selected_years):
+    """11. Jumlah Penerima Bantuan - Donut Chart"""
+    try:
+        if 'Bantuan Sosial' not in data:
+            return None
+        
+        df = data['Bantuan Sosial'].copy()
+        
+        program_col = None
+        penerima_col = None
+        tahun_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'program' in col_lower and 'type' in col_lower:
+                program_col = col
+            elif 'penerima' in col_lower:
+                penerima_col = col
+            elif 'tahun' in col_lower:
+                tahun_col = col
+        
+        if not all([program_col, penerima_col]):
+            return None
+        
+        if tahun_col and "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        chart_data = df.groupby(program_col)[penerima_col].sum().reset_index()
+        
+        fig = px.pie(
+            chart_data,
+            values=penerima_col,
+            names=program_col,
+            title="Jumlah Penerima Bantuan",
+            hole=0.4,  # Makes it a donut chart
+            color_discrete_sequence=['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']
+        )
+        
+        fig.update_traces(
+            textposition='inside',
+            textinfo='percent+label',
+            hovertemplate='<b>%{label}</b><br>Jumlah: %{value:,.0f}<br>Persentase: %{percent}<br><extra></extra>'
+        )
+        
+        fig.update_layout(height=400)
+        return fig
+        
+    except Exception as e:
+        return None
+
+def create_kontrasepsi_chart(data, selected_years):
+    """12. Jumlah Peserta per Jenis Kontrasepsi - Horizontal Bar Chart"""
+    try:
+        if 'Peserta Kb' not in data:
+            return None
+        
+        df = data['Peserta Kb'].copy()
+        
+        kontrasepsi_col = None
+        peserta_col = None
+        tahun_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'kontrasepsi' in col_lower:
+                kontrasepsi_col = col
+            elif 'peserta' in col_lower:
+                peserta_col = col
+            elif 'tahun' in col_lower:
+                tahun_col = col
+        
+        if not all([kontrasepsi_col, peserta_col]):
+            return None
+        
+        if tahun_col and "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        chart_data = df.groupby(kontrasepsi_col)[peserta_col].sum().reset_index()
+        chart_data = chart_data.sort_values(peserta_col, ascending=True)
+        
+        fig = px.bar(
+            chart_data,
+            x=peserta_col,
+            y=kontrasepsi_col,
+            orientation='h',
+            title="Jumlah Peserta per Jenis Kontrasepsi",
+            color=peserta_col,
+            color_continuous_scale='Blues'
+        )
+        
+        fig.update_layout(
+            height=400,
+            xaxis_title='Jumlah Peserta',
+            yaxis_title='Jenis Kontrasepsi'
+        )
+        
+        return fig
+        
+    except Exception as e:
+        return None
+
+def create_kb_performance_table(data):
+    """13. Performa KB Kecamatan 2023-2024 - Table"""
+    try:
+        if 'Data Kb Performance' not in data:
+            return None
+        
+        df = data['Data Kb Performance'].copy()
+        
+        # Select relevant columns
+        display_cols = []
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if any(word in col_lower for word in ['kecamatan', 'growth', 'performance', '2023']):
+                display_cols.append(col)
+        
+        if len(display_cols) < 3:
+            return df.head(20)  # Fallback to show first 20 rows
+        
+        table_data = df[display_cols].head(20)
+        return table_data
+        
+    except Exception as e:
+        return None
+
+def create_kb_trend_chart(data, selected_years):
+    """14. Tren Program KB - Stacked Bar Chart"""
+    try:
+        if 'Data Kb Tren Metode' not in data:
+            return None
+        
+        df = data['Data Kb Tren Metode'].copy()
+        
+        tahun_col = None
+        for col in df.columns:
+            if 'tahun' in col.lower():
+                tahun_col = col
+                break
+        
+        if not tahun_col:
+            return None
+        
+        if "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        # Get method columns (excluding Tahun and Total)
+        method_cols = []
+        for col in df.columns:
+            if col != tahun_col and 'total' not in col.lower():
+                if df[col].dtype in ['int64', 'float64']:
+                    method_cols.append(col)
+        
+        if not method_cols:
+            return None
+        
+        fig = go.Figure()
+        
+        colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8']
+        
+        for i, method in enumerate(method_cols):
+            fig.add_trace(go.Bar(
+                x=df[tahun_col],
+                y=df[method],
+                name=method,
+                marker_color=colors[i % len(colors)]
+            ))
+        
+        fig.update_layout(
+            title='Tren Program KB',
+            xaxis_title='Tahun',
+            yaxis_title='Jumlah Peserta',
+            barmode='stack',
+            height=400,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        
+        return fig
+        
+    except Exception as e:
         return None
 
 # ===========================
@@ -626,7 +853,7 @@ def main():
     <div class="main-header">
         <h1>🏛️ Dashboard Sosial Kabupaten Malang</h1>
         <h3>Sistem Monitoring Data Sosial 2020-2024</h3>
-        <p><em>📊 Fixed Version - Jenis Bencana Mapping Applied</em></p>
+        <p><em>📊 Dashboard Interaktif untuk Analisis Data Sosial</em></p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -750,17 +977,15 @@ def main():
             chart = create_jenis_bencana_pie_chart(data, selected_years)
             if chart:
                 st.plotly_chart(chart, use_container_width=True)
-                st.success("✅ Jenis Bencana Chart - FIXED!")
             else:
-                st.error("❌ Jenis Bencana Chart gagal")
+                st.info("📊 Data Jenis Bencana tidak tersedia")
         
         with col2:
             chart = create_bencana_kecamatan_chart(data, selected_years)
             if chart:
                 st.plotly_chart(chart, use_container_width=True)
-                st.success("✅ Bencana per Kecamatan Chart")
             else:
-                st.error("❌ Bencana per Kecamatan Chart gagal")
+                st.info("📊 Data Bencana per Kecamatan tidak tersedia")
         
         # Row 2: Kerugian Table & Kekerasan Gender
         col1, col2 = st.columns(2)
@@ -768,39 +993,60 @@ def main():
         with col1:
             st.markdown("#### 💰 Total Kerugian per Kecamatan")
             table = create_kerugian_table(data, selected_years)
-            if table is not None:
+            if table is not None and not table.empty:
                 st.dataframe(table, use_container_width=True, height=400)
-                st.success("✅ Kerugian Table")
             else:
-                st.error("❌ Kerugian Table gagal")
+                st.info("📊 Data Kerugian tidak tersedia")
         
         with col2:
             chart = create_kekerasan_gender_chart(data, selected_years)
             if chart:
                 st.plotly_chart(chart, use_container_width=True)
-                st.success("✅ Kekerasan Gender Chart")
             else:
-                st.error("❌ Kekerasan Gender Chart gagal")
+                st.info("📊 Data Kekerasan berdasarkan Gender tidak tersedia")
         
-        # Show mapping info
-        st.markdown("---")
-        st.markdown("### 🎯 Jenis Bencana Mapping Applied")
-        
+        # Row 3: Penerima per Tahun & Bantuan Donut
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("**🔢 Kode → Nama Mapping:**")
-            for code, name in JENIS_BENCANA_MAPPING.items():
-                st.write(f"{code} → {name}")
+            chart = create_penerima_per_tahun_chart(data, selected_years)
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
+            else:
+                st.info("📊 Data Penerima per Tahun tidak tersedia")
         
         with col2:
-            if 'Jenis Bencana' in data:
-                st.markdown("**📊 Data setelah mapping:**")
-                if 'Jenis_Bencana_Nama' in data['Jenis Bencana'].columns:
-                    mapping_sample = data['Jenis Bencana'][['Jenis_Bencana', 'Jenis_Bencana_Nama']].drop_duplicates().head(8)
-                    st.dataframe(mapping_sample)
-                else:
-                    st.write("Mapping column not found")
+            chart = create_bantuan_donut_chart(data, selected_years)
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
+            else:
+                st.info("📊 Data Bantuan tidak tersedia")
+        
+        # Row 4: Kontrasepsi & KB Performance Table
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            chart = create_kontrasepsi_chart(data, selected_years)
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
+            else:
+                st.info("📊 Data Kontrasepsi tidak tersedia")
+        
+        with col2:
+            st.markdown("#### 📈 Performa KB Kecamatan 2023-2024")
+            table = create_kb_performance_table(data)
+            if table is not None and not table.empty:
+                st.dataframe(table, use_container_width=True, height=400)
+            else:
+                st.info("📊 Data Performa KB tidak tersedia")
+        
+        # Row 5: KB Trend Chart
+        st.markdown("#### 📊 Tren Program KB")
+        chart = create_kb_trend_chart(data, selected_years)
+        if chart:
+            st.plotly_chart(chart, use_container_width=True)
+        else:
+            st.info("📊 Data Tren KB tidak tersedia")
         
         # Footer
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -809,15 +1055,12 @@ def main():
         <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px;'>
             <p><strong>📊 Dashboard Sosial Kabupaten Malang</strong></p>
             <p><strong>🔗 Data Source:</strong> GitHub Repository | <strong>🕒 Generated:</strong> {current_time}</p>
-            <p><strong>✅ FIXED:</strong> Jenis Bencana codes mapped to descriptive names!</p>
-            <p><strong>🎯 Solution:</strong> Integer codes (2,3,4,5...) → String names (Gempa Bumi, Tanah Longsor...)</p>
+            <p><strong>💡 Insight:</strong> Dashboard ini menyediakan visualisasi data sosial untuk mendukung pengambilan keputusan</p>
         </div>
         """, unsafe_allow_html=True)
     
     except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
-        import traceback
-        st.code(traceback.format_exc())
+        st.error(f"❌ Terjadi kesalahan dalam memuat dashboard: {str(e)}")
 
 if __name__ == "__main__":
     main()
