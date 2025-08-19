@@ -241,6 +241,21 @@ def load_github_data():
     return data
 
 # ===========================
+# FUNCTION TO FILTER YEARS (NEW)
+# ===========================
+def filter_available_years(years_list):
+    """Filter years to only include 2020-2024"""
+    valid_years = []
+    for year in years_list:
+        try:
+            year_int = int(year)
+            if 2020 <= year_int <= 2024:  # Only include years from 2020 to 2024
+                valid_years.append(year_int)
+        except (ValueError, TypeError):
+            continue
+    return sorted(valid_years)
+
+# ===========================
 # KPI CALCULATION
 # ===========================
 def calculate_kpis(data, selected_years):
@@ -866,15 +881,26 @@ def main():
             st.error("❌ Tidak ada data yang berhasil dimuat!")
             return
         
-        # Get available years
-        available_years = []
+        # Get available years and filter to 2020-2024 only
+        available_years = set()  # Gunakan set untuk menghindari duplikasi
         for df in data.values():
             for col in df.columns:
                 if 'tahun' in col.lower():
                     years = df[col].dropna().unique()
-                    available_years.extend([int(y) for y in years if str(y).isdigit()])
+                    for year in years:
+                        try:
+                            year_int = int(year)
+                            if 2020 <= year_int <= 2024:  # Filter langsung di sini
+                                available_years.add(year_int)
+                        except (ValueError, TypeError):
+                            continue
         
-        available_years = sorted(list(set(available_years))) if available_years else [2020, 2021, 2022, 2023, 2024]
+        # Convert set to sorted list
+        available_years = sorted(list(available_years))
+        
+        # If no valid years found, use default range
+        if not available_years:
+            available_years = [2020, 2021, 2022, 2023, 2024]
         
         # Filter section
         st.markdown("""
@@ -890,7 +916,7 @@ def main():
                 "📅 Pilih Tahun:",
                 options=["Semua Tahun"] + available_years,
                 default=["Semua Tahun"],
-                help="Filter tahun untuk visualisasi data"
+                help="Filter tahun untuk visualisasi data (2020-2024)"
             )
             
             if "Semua Tahun" in selected_years and len(selected_years) > 1:
@@ -1055,7 +1081,7 @@ def main():
         <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px;'>
             <p><strong>📊 Dashboard Sosial Kabupaten Malang</strong></p>
             <p><strong>🔗 Data Source:</strong> GitHub Repository | <strong>🕒 Generated:</strong> {current_time}</p>
-            <p><strong>💡 Insight:</strong> Dashboard ini menyediakan visualisasi data sosial untuk mendukung pengambilan keputusan</p>
+            <p><strong>💡 Insight:</strong> Dashboard ini menyediakan visualisasi data sosial untuk mendukung pengambilan keputusan (Periode 2020-2024)</p>
         </div>
         """, unsafe_allow_html=True)
     
