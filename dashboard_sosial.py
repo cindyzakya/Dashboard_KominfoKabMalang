@@ -2289,10 +2289,10 @@ def main():
         
         if simple_map:
             # Container untuk memusatkan peta
-            col1, col2, col3 = st.columns([1, 2, 1])  # Ratio 1:8:1 untuk memusatkan
+            col1, col2, col3 = st.columns([1, 5, 1])  # Ratio 1:8:1 untuk memusatkan
             
             with col2:  # Peta di kolom tengah
-                map_data = st_folium(simple_map, width=1000, height=500)  # Diperlebar dari 700 ke 900, tinggi dari 400 ke 500
+                map_data = st_folium(simple_map, width=2000, height=500)  # Diperlebar dari 700 ke 900, tinggi dari 400 ke 500
             
             # Map statistics - WARNA HITAM
             if disaster_data is not None and not disaster_data.empty:
