@@ -2015,23 +2015,33 @@ def create_kb_performance_table(data):
         
         df = data['Data Kb Performance'].copy()
         
+        if df.empty:
+            return None
+        
+        # Find relevant columns
         display_cols = []
         for col in df.columns:
             col_lower = col.lower().strip()
-            if any(word in col_lower for word in ['kecamatan', 'growth', 'performance', '2023']):
+            if any(word in col_lower for word in ['kecamatan', 'growth', 'performance', '2023', '2024', 'pertumbuhan', 'performa', 'pencapaian']):
                 display_cols.append(col)
         
-        if len(display_cols) < 3:
-            return df.head(20)
+        # If no specific columns found, use first few columns
+        if len(display_cols) < 2:
+            display_cols = df.columns.tolist()[:min(5, len(df.columns))]
         
+        # Limit to reasonable number of rows and columns
         table_data = df[display_cols].head(20)
+        
+        # Clean the data - replace NaN with appropriate values
+        table_data = table_data.fillna('-')
+        
         return table_data
         
     except Exception as e:
         return None
 
 def analyze_kb_performance_table(data):
-    """Analyze KB Performance Table"""
+    """Analyze KB Performance Table - Focus on Best and Worst Performance"""
     try:
         if 'Data Kb Performance' not in data:
             return "Data performa KB tidak tersedia untuk analisis."
@@ -2041,38 +2051,105 @@ def analyze_kb_performance_table(data):
         if df.empty:
             return "Tidak ada data performa KB untuk dianalisis."
         
-        # Basic analysis
-        total_kecamatan = len(df)
-        
-        # Find growth column
+        # Find columns dynamically
+        kecamatan_col = None
         growth_col = None
+        
         for col in df.columns:
-            if 'growth' in col.lower():
+            col_lower = col.lower().strip()
+            if 'kecamatan' in col_lower:
+                kecamatan_col = col
+            elif any(word in col_lower for word in ['growth', 'pertumbuhan', 'tumbuh', '%']):
                 growth_col = col
                 break
         
-        kecamatan_col = None
-        for col in df.columns:
-            if 'kecamatan' in col.lower():
-                kecamatan_col = col
-                break
+        if not kecamatan_col:
+            return "Data kecamatan tidak ditemukan dalam tabel performa KB."
         
-        if growth_col and kecamatan_col:
-            df[growth_col] = pd.to_numeric(df[growth_col], errors='coerce')
-            top_growth = df.loc[df[growth_col].idxmax()]
-            avg_growth = df[growth_col].mean()
-            
-            insight = f"Dari {total_kecamatan} kecamatan yang dianalisis, Kecamatan {top_growth[kecamatan_col]} " \
-                     f"menunjukkan performa terbaik dengan pertumbuhan {top_growth[growth_col]:.1f}%. " \
-                     f"Rata-rata pertumbuhan program KB di semua kecamatan adalah {avg_growth:.1f}%."
-        else:
-            insight = f"Data performa KB mencakup {total_kecamatan} kecamatan dengan berbagai indikator " \
-                     f"pencapaian program Keluarga Berencana periode 2023-2024."
+        if not growth_col:
+            # Try to find any numeric column that might represent performance
+            for col in df.columns:
+                if col != kecamatan_col and (df[col].dtype in ['int64', 'float64'] or 
+                   (df[col].dtype == 'object' and any(str(val).replace('%','').replace(',','').replace('.','').isdigit() 
+                                                     for val in df[col].dropna().head(3)))):
+                    growth_col = col
+                    break
+        
+        if not growth_col:
+            return f"Data mencakup {len(df)} kecamatan namun tidak ditemukan kolom pertumbuhan untuk dianalisis."
+        
+        # Clean and convert growth data
+        df_clean = df.copy()
+        
+        try:
+            if df_clean[growth_col].dtype == 'object':
+                # Remove %, commas, and convert to numeric
+                df_clean[growth_col + '_numeric'] = pd.to_numeric(
+                    df_clean[growth_col].astype(str)
+                    .str.replace('%', '')
+                    .str.replace(',', '')
+                    .str.replace('Rp', '')
+                    .str.strip(), 
+                    errors='coerce'
+                )
+                numeric_col = growth_col + '_numeric'
+            else:
+                numeric_col = growth_col
+                
+        except:
+            return f"Data performa KB mencakup {len(df)} kecamatan namun format data tidak dapat dianalisis."
+        
+        # Remove rows with NaN values
+        df_clean = df_clean.dropna(subset=[numeric_col])
+        
+        if df_clean.empty or len(df_clean) < 2:
+            return f"Data performa KB mencakup {len(df)} kecamatan namun data numerik tidak mencukupi untuk analisis."
+        
+        # Find best and worst performers
+        best_idx = df_clean[numeric_col].idxmax()
+        worst_idx = df_clean[numeric_col].idxmin()
+        
+        best_kecamatan = df_clean.loc[best_idx, kecamatan_col]
+        best_value = df_clean.loc[best_idx, numeric_col]
+        
+        worst_kecamatan = df_clean.loc[worst_idx, kecamatan_col]
+        worst_value = df_clean.loc[worst_idx, numeric_col]
+        
+        # Calculate statistics
+        avg_value = df_clean[numeric_col].mean()
+        total_kecamatan = len(df_clean)
+        
+        # Determine if values are percentages or regular numbers
+        is_percentage = '%' in str(df[growth_col].iloc[0]) if not df[growth_col].empty else False
+        unit = '%' if is_percentage else ''
+        
+        # Build insight
+        insight = f"Kecamatan {best_kecamatan} menunjukkan performa KB terbaik dengan nilai {best_value:.1f}{unit}, " \
+                 f"sedangkan Kecamatan {worst_kecamatan} memiliki performa terendah dengan nilai {worst_value:.1f}{unit}. "
+        
+        # Add comparison context
+        if best_value > avg_value:
+            diff_best = best_value - avg_value
+            insight += f"Performa terbaik berada {diff_best:.1f}{unit} di atas rata-rata ({avg_value:.1f}{unit}). "
+        
+        if worst_value < avg_value:
+            diff_worst = avg_value - worst_value
+            insight += f"Performa terendah berada {diff_worst:.1f}{unit} di bawah rata-rata. "
+        
+        # Add performance gap information
+        performance_gap = best_value - worst_value
+        insight += f"Terdapat kesenjangan performa sebesar {performance_gap:.1f}{unit} antara kecamatan terbaik dan terburuk. "
+        
+        # Categorize performance levels
+        above_avg = len(df_clean[df_clean[numeric_col] > avg_value])
+        below_avg = len(df_clean[df_clean[numeric_col] < avg_value])
+        
+        insight += f"Dari {total_kecamatan} kecamatan, {above_avg} kecamatan berada di atas rata-rata dan {below_avg} kecamatan di bawah rata-rata."
         
         return insight
         
     except Exception as e:
-        return f"Error dalam analisis tabel KB: {str(e)}"
+        return f"Data performa KB tersedia untuk {len(data.get('Data Kb Performance', []))} kecamatan namun tidak dapat dianalisis secara detail."
 
 # ===========================
 # MAIN APPLICATION
@@ -2149,7 +2226,7 @@ def main():
             <div class="accurate-card">
                 <h4>👥 Total Penerima Bantuan</h4>
                 <h2>{value:,}</h2>
-                <p>✅ {value} Orang</p>
+                <p>{value} Orang</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -2159,7 +2236,7 @@ def main():
             <div class="accurate-card">
                 <h4>🌊 Total Bencana</h4>
                 <h2>{value:,}</h2>
-                <p>✅ {value} Kejadian</p>
+                <p>{value} Kejadian</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -2169,7 +2246,7 @@ def main():
             <div class="accurate-card">
                 <h4>👶 Kekerasan Anak</h4>
                 <h2>{value:,}</h2>
-                <p>✅ {value} Kasus</p>
+                <p>{value} Kasus</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -2179,7 +2256,7 @@ def main():
             <div class="accurate-card">
                 <h4>👩 Kekerasan Perempuan</h4>
                 <h2>{value:,}</h2>
-                <p>✅ {value} Kasus</p>
+                <p>{value} Kasus</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -2189,7 +2266,7 @@ def main():
             <div class="accurate-card">
                 <h4>👶 Peserta KB</h4>
                 <h2>{value:,}</h2>
-                <p>✅ {value} Orang</p>
+                <p>{value} Orang</p>
             </div>
             """, unsafe_allow_html=True)
         
