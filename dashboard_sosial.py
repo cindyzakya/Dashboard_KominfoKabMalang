@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS Styling
+# CSS Styling - DIPERBAIKI UNTUK KPI CARDS
 st.markdown("""
 <style>
     .main-header {
@@ -103,22 +103,119 @@ st.markdown("""
         cursor: pointer;
     }
     
+    /* KPI CARDS - DIPERBAIKI AGAR LEBIH RAPI DAN SEJAJAR */
     .accurate-card {
         background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
         color: white;
-        padding: 20px;
-        border-radius: 10px;
+        padding: 25px 20px;
+        border-radius: 15px;
         text-align: center;
         margin: 10px 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        height: 180px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 180px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .accurate-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        pointer-events: none;
+    }
+    
+    .accurate-card h4 {
+        margin: 0 0 10px 0;
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.2;
+        color: rgba(255, 255, 255, 0.95);
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        z-index: 1;
+        position: relative;
+    }
+    
+    .accurate-card h2 {
+        margin: 10px 0;
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: white;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        z-index: 1;
+        position: relative;
+        line-height: 1;
+    }
+    
+    .accurate-card p {
+        margin: 10px 0 0 0;
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 500;
+        z-index: 1;
+        position: relative;
+    }
+    
+    /* Responsive KPI Cards */
+    @media (max-width: 1200px) {
+        .accurate-card h2 {
+            font-size: 1.8rem;
+        }
+        .accurate-card h4 {
+            font-size: 0.9rem;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .accurate-card {
+            height: 160px;
+            padding: 20px 15px;
+        }
+        .accurate-card h2 {
+            font-size: 1.6rem;
+        }
+        .accurate-card h4 {
+            font-size: 0.85rem;
+        }
     }
     
     .kpi-section {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        padding: 20px;
-        border-radius: 15px;
-        margin: 20px 0;
-        border: 1px solid #dee2e6;
+        padding: 30px;
+        border-radius: 20px;
+        margin: 30px 0;
+        border: 2px solid #dee2e6;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .kpi-section h3 {
+        text-align: center;
+        color: #2c3e50;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 0 25px 0;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    /* Ensure equal column widths */
+    .stColumns > div {
+        padding: 0 5px;
+    }
+    
+    .stColumns > div:first-child {
+        padding-left: 0;
+    }
+    
+    .stColumns > div:last-child {
+        padding-right: 0;
     }
     
     /* Map Container */
@@ -449,7 +546,7 @@ def clean_numeric_columns(df, exclude_columns=None):
     return df_clean
 
 # ===========================
-# MAP DATA PREPARATION FUNCTIONS
+# MAP DATA PREPARATION FUNCTIONS - DIPERBAIKI
 # ===========================
 
 def prepare_disaster_data_for_map(data, selected_years):
@@ -529,7 +626,7 @@ def prepare_bantuan_sosial_data_for_map(data, selected_years):
         return None
 
 def prepare_kb_performance_data_for_map(data):
-    """Prepare KB performance data for mapping"""
+    """Prepare KB performance data for mapping - DIPERBAIKI"""
     try:
         if 'Data Kb Performance' not in data:
             return None
@@ -543,24 +640,20 @@ def prepare_kb_performance_data_for_map(data):
             col_lower = col.lower().strip()
             if 'kecamatan' in col_lower:
                 kecamatan_col = col
-            elif any(word in col_lower for word in ['growth', 'pertumbuhan', '2024']):
+            elif 'growth' in col_lower and '2024' in col_lower and '2023' in col_lower:
                 growth_col = col
                 break
         
         if not all([kecamatan_col, growth_col]):
             return None
         
-        # Clean growth data
+        # Clean growth data - PERBAIKAN UTAMA
         df_clean = df.copy()
         if df_clean[growth_col].dtype == 'object':
-            df_clean[growth_col + '_numeric'] = pd.to_numeric(
-                df_clean[growth_col].astype(str)
-                .str.replace('%', '')
-                .str.replace(',', '')
-                .str.strip(), 
-                errors='coerce'
-            )
-            numeric_col = growth_col + '_numeric'
+            # Remove % and convert to numeric
+            df_clean['Growth_Rate_Numeric'] = df_clean[growth_col].astype(str).str.replace('%', '').str.replace(',', '.').str.strip()
+            df_clean['Growth_Rate_Numeric'] = pd.to_numeric(df_clean['Growth_Rate_Numeric'], errors='coerce')
+            numeric_col = 'Growth_Rate_Numeric'
         else:
             numeric_col = growth_col
         
@@ -672,7 +765,6 @@ def create_map_with_data(map_data, map_type, selected_years=None):
                 value_col = 'Total_Bencana'
                 unit = ' kejadian bencana'
                 icon_base = '🌊'
-                # Icon untuk bencana - menggunakan sistem bahaya
                 def get_disaster_icon_color(value, max_val):
                     if value == 0:
                         return 'green', 'ok'
@@ -776,11 +868,11 @@ def create_map_with_data(map_data, map_type, selected_years=None):
         return None
 
 # ===========================
-# MAP ANALYSIS FUNCTIONS
+# MAP ANALYSIS FUNCTIONS - DIPERBAIKI
 # ===========================
 
 def analyze_map_data_generic(map_data, map_type, selected_years=None):
-    """Generic function to analyze map data"""
+    """Generic function to analyze map data - DIPERBAIKI"""
     try:
         if map_data is None or map_data.empty:
             return f"Tidak ada data {map_type.lower()} untuk dianalisis."
@@ -811,7 +903,7 @@ def analyze_map_data_generic(map_data, map_type, selected_years=None):
         total_kecamatan = len(map_data)
         
         if map_type == "KB Performance":
-            # Analisis khusus untuk KB Performance
+            # Analisis khusus untuk KB Performance - DIPERBAIKI
             positive_growth = len(map_data[map_data[value_col] > 0])
             negative_growth = len(map_data[map_data[value_col] < 0])
             avg_growth = map_data[value_col].mean()
@@ -846,7 +938,13 @@ def analyze_map_data_generic(map_data, map_type, selected_years=None):
             if not zero_value.empty and map_type == "Bencana Alam":
                 insight += f"Terdapat {len(zero_value)} kecamatan yang tidak mengalami bencana dalam periode ini. "
             
-            insight += f"Rata-rata {unit} per kecamatan adalah {avg_value:.1f}."
+            # PERBAIKAN RATA-RATA BERDASARKAN JENIS DATA
+            if map_type == "Bencana Alam":
+                insight += f"Rata-rata {unit} per kecamatan adalah {avg_value:.0f} bencana."
+            elif map_type == "Bantuan Sosial":
+                insight += f"Rata-rata {unit} per kecamatan adalah {avg_value:.0f} orang."
+            elif map_type == "Peserta KB":
+                insight += f"Rata-rata {unit} per kecamatan adalah {avg_value:.0f} orang."
             
             # Tambahan untuk periode waktu
             if selected_years and "Semua Tahun" not in selected_years:
@@ -1541,7 +1639,7 @@ def analyze_bencana_kecamatan(data, selected_years):
             second_kecamatan = chart_data.iloc[1]
             insight += f" Diikuti oleh Kecamatan {second_kecamatan[kecamatan_col]} dengan {second_kecamatan[value_col]:,.0f} kejadian."
         
-        insight += f" Rata-rata kejadian bencana per kecamatan adalah {avg_bencana:.1f} kejadian. " \
+        insight += f" Rata-rata kejadian bencana per kecamatan adalah {avg_bencana:.0f} kejadian. " \
                   f"Terdapat {len(kecamatan_rawan)} kecamatan yang memiliki tingkat bencana di atas rata-rata."
         
         if not kecamatan_aman.empty:
@@ -1657,7 +1755,7 @@ def analyze_kontrasepsi_chart(data, selected_years):
         return f"Error dalam analisis: {str(e)}"
 
 def analyze_kb_performance_table(data):
-    """Analyze KB Performance Table"""
+    """Analyze KB Performance Table - DIPERBAIKI"""
     try:
         if 'Data Kb Performance' not in data:
             return "Data performa KB tidak tersedia untuk analisis."
@@ -1675,7 +1773,7 @@ def analyze_kb_performance_table(data):
             col_lower = col.lower().strip()
             if 'kecamatan' in col_lower:
                 kecamatan_col = col
-            elif any(word in col_lower for word in ['growth', 'pertumbuhan', 'tumbuh', '%']):
+            elif 'growth' in col_lower and '2024' in col_lower and '2023' in col_lower:
                 growth_col = col
                 break
         
@@ -1683,32 +1781,17 @@ def analyze_kb_performance_table(data):
             return "Data kecamatan tidak ditemukan dalam tabel performa KB."
         
         if not growth_col:
-            # Try to find any numeric column that might represent performance
-            for col in df.columns:
-                if col != kecamatan_col and (df[col].dtype in ['int64', 'float64'] or 
-                   (df[col].dtype == 'object' and any(str(val).replace('%','').replace(',','').replace('.','').isdigit() 
-                                                     for val in df[col].dropna().head(3)))):
-                    growth_col = col
-                    break
-        
-        if not growth_col:
             return f"Data mencakup {len(df)} kecamatan namun tidak ditemukan kolom pertumbuhan untuk dianalisis."
         
-        # Clean and convert growth data
+        # Clean and convert growth data - PERBAIKAN UTAMA
         df_clean = df.copy()
         
         try:
             if df_clean[growth_col].dtype == 'object':
                 # Remove %, commas, and convert to numeric
-                df_clean[growth_col + '_numeric'] = pd.to_numeric(
-                    df_clean[growth_col].astype(str)
-                    .str.replace('%', '')
-                    .str.replace(',', '')
-                    .str.replace('Rp', '')
-                    .str.strip(), 
-                    errors='coerce'
-                )
-                numeric_col = growth_col + '_numeric'
+                df_clean['Growth_Rate_Clean'] = df_clean[growth_col].astype(str).str.replace('%', '').str.replace(',', '.').str.strip()
+                df_clean['Growth_Rate_Clean'] = pd.to_numeric(df_clean['Growth_Rate_Clean'], errors='coerce')
+                numeric_col = 'Growth_Rate_Clean'
             else:
                 numeric_col = growth_col
                 
@@ -1735,26 +1818,22 @@ def analyze_kb_performance_table(data):
         avg_value = df_clean[numeric_col].mean()
         total_kecamatan = len(df_clean)
         
-        # Determine if values are percentages or regular numbers
-        is_percentage = '%' in str(df[growth_col].iloc[0]) if not df[growth_col].empty else False
-        unit = '%' if is_percentage else ''
-        
         # Build insight
-        insight = f"Kecamatan {best_kecamatan} menunjukkan performa KB terbaik dengan nilai {best_value:.1f}{unit}, " \
-                 f"sedangkan Kecamatan {worst_kecamatan} memiliki performa terendah dengan nilai {worst_value:.1f}{unit}. "
+        insight = f"Kecamatan {best_kecamatan} menunjukkan performa KB terbaik dengan pertumbuhan {best_value:.2f}%, " \
+                 f"sedangkan Kecamatan {worst_kecamatan} mengalami penurunan terbesar dengan {worst_value:.2f}%. "
         
         # Add comparison context
         if best_value > avg_value:
             diff_best = best_value - avg_value
-            insight += f"Performa terbaik berada {diff_best:.1f}{unit} di atas rata-rata ({avg_value:.1f}{unit}). "
+            insight += f"Performa terbaik berada {diff_best:.2f}% di atas rata-rata ({avg_value:.2f}%). "
         
         if worst_value < avg_value:
             diff_worst = avg_value - worst_value
-            insight += f"Performa terendah berada {diff_worst:.1f}{unit} di bawah rata-rata. "
+            insight += f"Performa terendah berada {diff_worst:.2f}% di bawah rata-rata. "
         
         # Add performance gap information
         performance_gap = best_value - worst_value
-        insight += f"Terdapat kesenjangan performa sebesar {performance_gap:.1f}{unit} antara kecamatan terbaik dan terburuk. "
+        insight += f"Terdapat kesenjangan performa sebesar {performance_gap:.2f}% antara kecamatan terbaik dan terburuk. "
         
         # Categorize performance levels
         above_avg = len(df_clean[df_clean[numeric_col] > avg_value])
@@ -2530,13 +2609,13 @@ def main():
         # Calculate KPIs
         kpis = calculate_kpis(data, selected_years)
         
-        # Display KPIs
+        # Display KPIs - DIPERBAIKI DENGAN LAYOUT YANG LEBIH RAPI
         st.markdown("""
         <div class="kpi-section">
             <h3>📊 Key Performance Indicators</h3>
-        </div>
         """, unsafe_allow_html=True)
         
+        # KPI Cards dengan layout yang sama
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
@@ -2588,6 +2667,8 @@ def main():
                 <p>{value} Orang</p>
             </div>
             """, unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
         
         # ===========================
         # SECTION: PETA INTERAKTIF - FILTER YANG DIPERBAIKI
@@ -2661,44 +2742,23 @@ def main():
             # Display map
             map_data_result = st_folium(interactive_map, width='100%', height=500)
             
-            # Map statistics and analysis
+            # Map statistics and analysis - DIPERBAIKI
             if map_data is not None and not map_data.empty:
                 # Analisis data
                 insight = analyze_map_data_generic(map_data, map_type, selected_years)
                 
-                # Statistik berdasarkan jenis data
-                if map_type == "Bencana Alam":
-                    total_value = map_data['Total_Bencana'].sum()
-                    avg_value = map_data['Total_Bencana'].mean()
-                    top_3 = map_data.nlargest(3, 'Total_Bencana')
-                    unit = "kejadian bencana"
-                    icon = "🌊"
-                elif map_type == "Bantuan Sosial":
-                    total_value = map_data['Total_Penerima'].sum()
-                    avg_value = map_data['Total_Penerima'].mean()
-                    top_3 = map_data.nlargest(3, 'Total_Penerima')
-                    unit = "penerima bantuan"
-                    icon = "👥"
-                elif map_type == "KB Performance":
+                # Statistik berdasarkan jenis data - DIPERBAIKI
+                if map_type == "KB Performance":
                     avg_value = map_data['Growth_Rate'].mean()
                     positive_growth = len(map_data[map_data['Growth_Rate'] > 0])
                     negative_growth = len(map_data[map_data['Growth_Rate'] < 0])
                     top_3 = map_data.nlargest(3, 'Growth_Rate')
-                    unit = "% pertumbuhan"
-                    icon = "📈"
-                elif map_type == "Peserta KB":
-                    total_value = map_data['Total_Peserta'].sum()
-                    avg_value = map_data['Total_Peserta'].mean()
-                    top_3 = map_data.nlargest(3, 'Total_Peserta')
-                    unit = "peserta KB"
-                    icon = "👶"
-                
-                # Display statistics
-                if map_type == "KB Performance":
+                    worst_3 = map_data.nsmallest(3, 'Growth_Rate')
+                    
                     st.markdown(f"""
                     <div class="map-stats">
                         <div class="map-stat-card">
-                            <h4>📊 Statistik {map_type}</h4>
+                            <h4>📊 Statistik KB Performance</h4>
                             <p><strong>Total Kecamatan:</strong> {len(map_data)}</p>
                             <p><strong>Pertumbuhan Positif:</strong> {positive_growth} kecamatan</p>
                             <p><strong>Pertumbuhan Negatif:</strong> {negative_growth} kecamatan</p>
@@ -2711,11 +2771,27 @@ def main():
                             <h4>📈 Ringkasan Pertumbuhan</h4>
                             <p><strong>Rata-rata Pertumbuhan:</strong> {avg_value:.2f}%</p>
                             <p><strong>Tertinggi:</strong> {top_3.iloc[0]['Growth_Rate']:.2f}%</p>
-                            <p><strong>Terendah:</strong> {map_data['Growth_Rate'].min():.2f}%</p>
+                            <p><strong>Terendah:</strong> {worst_3.iloc[0]['Growth_Rate']:.2f}%</p>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
                 else:
+                    # Untuk data lainnya (Bencana, Bantuan Sosial, Peserta KB) - DIPERBAIKI FORMAT RATA-RATA
+                    value_col = map_data.columns[1]  # Kolom kedua adalah value column
+                    total_value = map_data[value_col].sum()
+                    avg_value = map_data[value_col].mean()
+                    top_3 = map_data.nlargest(3, value_col)
+                    
+                    if map_type == "Bencana Alam":
+                        unit = "kejadian"
+                        avg_text = f"{avg_value:.0f} bencana"
+                    elif map_type == "Bantuan Sosial":
+                        unit = "penerima"
+                        avg_text = f"{avg_value:.0f} orang"
+                    elif map_type == "Peserta KB":
+                        unit = "peserta"
+                        avg_text = f"{avg_value:.0f} orang"
+                    
                     st.markdown(f"""
                     <div class="map-stats">
                         <div class="map-stat-card">
@@ -2725,18 +2801,26 @@ def main():
                         </div>
                         <div class="map-stat-card">
                             <h4>🔝 Top 3 Kecamatan</h4>
-                            {'<br>'.join([f"• {row['Kecamatan']}: {row.iloc[1]:,.0f} {unit}" for _, row in top_3.iterrows()])}
+                            {'<br>'.join([f"• {row['Kecamatan']}: {row[value_col]:,.0f} {unit}" for _, row in top_3.iterrows()])}
                         </div>
                         <div class="map-stat-card">
                             <h4>📈 Ringkasan Data</h4>
-                            <p><strong>Rata-rata per Kecamatan:</strong> {avg_value:.1f}</p>
-                            <p><strong>Tertinggi:</strong> {top_3.iloc[0].iloc[1]:,.0f}</p>
-                            <p><strong>Terendah:</strong> {map_data.iloc[:, 1].min():,.0f}</p>
+                            <p><strong>Rata-rata per Kecamatan:</strong> {avg_text}</p>
+                            <p><strong>Tertinggi:</strong> {top_3.iloc[0][value_col]:,.0f}</p>
+                            <p><strong>Terendah:</strong> {map_data[value_col].min():,.0f}</p>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
                 
                 # Display insight
+                icon_map = {
+                    "Bencana Alam": "🌊",
+                    "Bantuan Sosial": "👥", 
+                    "KB Performance": "📈",
+                    "Peserta KB": "👶"
+                }
+                icon = icon_map.get(map_type, "📊")
+                
                 st.markdown(f"""
                 <div class="chart-explanation">
                     {icon} <strong>Hasil Analisis {map_type}:</strong> {insight}
