@@ -618,7 +618,7 @@ def create_map_with_data(map_data, map_type, selected_years=None):
     """Create a map with different data types"""
     try:
         # Koordinat tengah Kabupaten Malang yang lebih akurat
-        center_lat = -8.1667
+        center_lat = -8.0710
         center_lon = 112.6333
         
         m = folium.Map(
