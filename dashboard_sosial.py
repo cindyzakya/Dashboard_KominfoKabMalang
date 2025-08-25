@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS Styling (sama seperti sebelumnya)
+# CSS Styling
 st.markdown("""
 <style>
     .main-header {
@@ -263,11 +263,77 @@ st.markdown("""
         color: #2c3e50;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+
+    /* PERBAIKAN FILTER PETA - LEBIH RAPI */
+    .map-filter-container {
+        background: rgba(255,255,255,0.95);
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .map-filter-header {
+        color: #2c3e50;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin: 0 0 15px 0;
+        text-align: center;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .filter-info-box {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        padding: 12px;
+        border-radius: 8px;
+        border-left: 4px solid #2196f3;
+        color: #1565c0;
+        font-size: 0.9rem;
+        margin-top: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .filter-info-box strong {
+        color: #0d47a1;
+    }
+    
+    /* Styling untuk selectbox */
+    .stSelectbox > div > div {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .stSelectbox > div > div:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+    
+    .stSelectbox label {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 1rem;
+    }
+    
+    /* Map filter responsive */
+    @media (max-width: 768px) {
+        .map-filter-container {
+            padding: 15px;
+        }
+        
+        .map-filter-header {
+            font-size: 1rem;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ===========================
-# MAPPING JENIS BENCANA (sama seperti sebelumnya)
+# MAPPING JENIS BENCANA
 # ===========================
 JENIS_BENCANA_MAPPING = {
     "Gempa_Bumi": "Gempa Bumi",
@@ -290,7 +356,7 @@ JENIS_BENCANA_MAPPING = {
 }
 
 # ===========================
-# UTILITY FUNCTIONS (sama seperti sebelumnya)
+# UTILITY FUNCTIONS
 # ===========================
 def convert_indonesian_number(value):
     """Convert Indonesian number format to integer"""
@@ -383,296 +449,417 @@ def clean_numeric_columns(df, exclude_columns=None):
     return df_clean
 
 # ===========================
-# ANALYSIS FUNCTIONS - BARU!
+# MAP DATA PREPARATION FUNCTIONS
 # ===========================
-def analyze_penerima_per_tahun(data, selected_years):
-    """Analyze penerima bantuan per tahun data"""
-    try:
-        if 'Bantuan Sosial' not in data:
-            return "Data bantuan sosial tidak tersedia untuk analisis."
-        
-        df = data['Bantuan Sosial'].copy()
-        
-        tahun_col = None
-        penerima_col = None
-        
-        for col in df.columns:
-            col_lower = col.lower().strip()
-            if 'tahun' in col_lower:
-                tahun_col = col
-            elif 'penerima' in col_lower:
-                penerima_col = col
-        
-        if not all([tahun_col, penerima_col]):
-            return "Kolom tahun atau penerima tidak ditemukan."
-        
-        if "Semua Tahun" not in selected_years:
-            df = df[df[tahun_col].isin(selected_years)]
-        
-        yearly_data = df.groupby(tahun_col)[penerima_col].agg(['sum', 'mean']).reset_index()
-        yearly_data.columns = [tahun_col, 'Total_Penerima', 'Rata_rata_Penerima']
-        
-        if yearly_data.empty:
-            return "Tidak ada data untuk periode yang dipilih."
-        
-        # Find insights
-        max_year = yearly_data.loc[yearly_data['Total_Penerima'].idxmax(), tahun_col]
-        max_total = yearly_data['Total_Penerima'].max()
-        min_year = yearly_data.loc[yearly_data['Total_Penerima'].idxmin(), tahun_col]
-        min_total = yearly_data['Total_Penerima'].min()
-        
-        avg_highest_year = yearly_data.loc[yearly_data['Rata_rata_Penerima'].idxmax(), tahun_col]
-        avg_highest = yearly_data['Rata_rata_Penerima'].max()
-        
-        total_all_years = yearly_data['Total_Penerima'].sum()
-        
-        insight = f"Tahun {max_year} adalah tahun dengan penerima bantuan terbanyak ({max_total:,.0f} orang), " \
-                 f"sedangkan tahun {min_year} memiliki penerima paling sedikit ({min_total:,.0f} orang). " \
-                 f"Rata-rata penerima per program tertinggi terjadi pada tahun {avg_highest_year} " \
-                 f"dengan {avg_highest:,.0f} orang per program. " \
-                 f"Total penerima bantuan dalam periode yang dipilih adalah {total_all_years:,.0f} orang."
-        
-        return insight
-        
-    except Exception as e:
-        return f"Error dalam analisis: {str(e)}"
 
-def analyze_bantuan_donut(data, selected_years):
-    """Analyze bantuan distribution"""
-    try:
-        if 'Bantuan Sosial' not in data:
-            return "Data bantuan sosial tidak tersedia untuk analisis."
-        
-        df = data['Bantuan Sosial'].copy()
-        
-        program_col = None
-        penerima_col = None
-        tahun_col = None
-        
-        for col in df.columns:
-            col_lower = col.lower().strip()
-            if 'program' in col_lower and 'type' in col_lower:
-                program_col = col
-            elif 'penerima' in col_lower:
-                penerima_col = col
-            elif 'tahun' in col_lower:
-                tahun_col = col
-        
-        if not all([program_col, penerima_col]):
-            return "Kolom program atau penerima tidak ditemukan."
-        
-        if tahun_col and "Semua Tahun" not in selected_years:
-            df = df[df[tahun_col].isin(selected_years)]
-        
-        chart_data = df.groupby(program_col)[penerima_col].sum().reset_index()
-        chart_data = chart_data.sort_values(penerima_col, ascending=False)
-        
-        if chart_data.empty:
-            return "Tidak ada data untuk periode yang dipilih."
-        
-        # Find insights
-        top_program = chart_data.iloc[0]
-        total_penerima = chart_data[penerima_col].sum()
-        percentage_top = (top_program[penerima_col] / total_penerima) * 100
-        
-        second_program = chart_data.iloc[1] if len(chart_data) > 1 else None
-        
-        insight = f"Program {top_program[program_col]} memiliki penerima terbanyak dengan {top_program[penerima_col]:,.0f} orang " \
-                 f"({percentage_top:.1f}% dari total penerima)."
-        
-        if second_program is not None:
-            percentage_second = (second_program[penerima_col] / total_penerima) * 100
-            insight += f" Diikuti oleh program {second_program[program_col]} dengan {second_program[penerima_col]:,.0f} orang " \
-                      f"({percentage_second:.1f}%)."
-        
-        insight += f" Total ada {len(chart_data)} jenis program bantuan dengan {total_penerima:,.0f} penerima."
-        
-        return insight
-        
-    except Exception as e:
-        return f"Error dalam analisis: {str(e)}"
-
-def analyze_jenis_bencana_pie(data, selected_years):
-    """Analyze jenis bencana distribution"""
-    try:
-        if 'Jenis Bencana' not in data:
-            return "Data jenis bencana tidak tersedia untuk analisis."
-        
-        df = data['Jenis Bencana'].copy()
-        
-        if 'Jenis_Bencana_Nama' in df.columns:
-            jenis_col = 'Jenis_Bencana_Nama'
-        else:
-            if 'Jenis_Bencana' in df.columns:
-                df['Jenis_Bencana_Display'] = df['Jenis_Bencana'].astype(str).str.replace('_', ' ').str.title()
-                jenis_col = 'Jenis_Bencana_Display'
-            else:
-                return "Kolom jenis bencana tidak ditemukan."
-        
-        jumlah_col = None
-        for col in df.columns:
-            if 'jumlah' in col.lower() and df[col].dtype in ['int64', 'float64']:
-                jumlah_col = col
-                break
-        
-        if not jumlah_col:
-            return "Kolom jumlah bencana tidak ditemukan."
-        
-        tahun_col = None
-        for col in df.columns:
-            if 'tahun' in col.lower():
-                tahun_col = col
-                break
-        
-        if tahun_col and "Semua Tahun" not in selected_years:
-            df_filtered = df[df[tahun_col].isin(selected_years)]
-        else:
-            df_filtered = df
-        
-        if df_filtered.empty:
-            return "Tidak ada data untuk periode yang dipilih."
-        
-        chart_data = df_filtered.groupby(jenis_col)[jumlah_col].sum().reset_index()
-        chart_data = chart_data[chart_data[jumlah_col] > 0].sort_values(jumlah_col, ascending=False)
-        
-        if chart_data.empty:
-            return "Tidak ada data bencana untuk periode yang dipilih."
-        
-        # Find insights
-        total_bencana = chart_data[jumlah_col].sum()
-        top_bencana = chart_data.iloc[0]
-        percentage_top = (top_bencana[jumlah_col] / total_bencana) * 100
-        
-        insight = f"{top_bencana[jenis_col]} adalah jenis bencana yang paling sering terjadi dengan {top_bencana[jumlah_col]:,.0f} kejadian " \
-                 f"({percentage_top:.1f}% dari total bencana)."
-        
-        if len(chart_data) > 1:
-            second_bencana = chart_data.iloc[1]
-            percentage_second = (second_bencana[jumlah_col] / total_bencana) * 100
-            insight += f" Diikuti oleh {second_bencana[jenis_col]} dengan {second_bencana[jumlah_col]:,.0f} kejadian " \
-                      f"({percentage_second:.1f}%)."
-        
-        insight += f" Total tercatat {total_bencana:,.0f} kejadian bencana dari {len(chart_data)} jenis bencana yang berbeda."
-        
-        return insight
-        
-    except Exception as e:
-        return f"Error dalam analisis: {str(e)}"
-
-def analyze_bencana_kecamatan(data, selected_years):
-    """Analyze bencana per kecamatan"""
+def prepare_disaster_data_for_map(data, selected_years):
+    """Prepare disaster data for mapping"""
     try:
         if 'Bencana Alam' not in data:
-            return "Data bencana alam tidak tersedia untuk analisis."
+            return None
         
         df = data['Bencana Alam'].copy()
         
         kecamatan_col = None
         jumlah_col = None
+        tahun_col = None
         
         for col in df.columns:
             col_lower = col.lower().strip()
             if 'kecamatan' in col_lower:
                 kecamatan_col = col
+            elif 'tahun' in col_lower:
+                tahun_col = col
             elif any(word in col_lower for word in ['jumlah', 'bencana']) and df[col].dtype in ['int64', 'float64']:
                 jumlah_col = col
         
         if not kecamatan_col:
-            return "Kolom kecamatan tidak ditemukan."
-        
-        tahun_col = None
-        for col in df.columns:
-            if 'tahun' in col.lower():
-                tahun_col = col
-                break
+            return None
         
         if tahun_col and "Semua Tahun" not in selected_years:
             df = df[df[tahun_col].isin(selected_years)]
         
         if jumlah_col:
-            chart_data = df.groupby(kecamatan_col)[jumlah_col].sum().reset_index()
-            value_col = jumlah_col
+            map_data = df.groupby(kecamatan_col)[jumlah_col].sum().reset_index()
+            map_data.columns = ['Kecamatan', 'Total_Bencana']
         else:
-            chart_data = df[kecamatan_col].value_counts().reset_index()
-            chart_data.columns = [kecamatan_col, 'Count']
-            value_col = 'Count'
+            map_data = df[kecamatan_col].value_counts().reset_index()
+            map_data.columns = ['Kecamatan', 'Total_Bencana']
         
-        chart_data = chart_data.sort_values(value_col, ascending=False)
-        
-        if chart_data.empty:
-            return "Tidak ada data untuk periode yang dipilih."
-        
-        # Find insights
-        top_kecamatan = chart_data.iloc[0]
-        total_bencana = chart_data[value_col].sum()
-        avg_bencana = chart_data[value_col].mean()
-        
-        kecamatan_aman = chart_data[chart_data[value_col] == 0]
-        kecamatan_rawan = chart_data[chart_data[value_col] >= avg_bencana]
-        
-        insight = f"Kecamatan {top_kecamatan[kecamatan_col]} adalah daerah paling rawan bencana dengan {top_kecamatan[value_col]:,.0f} kejadian bencana."
-        
-        if len(chart_data) > 1:
-            second_kecamatan = chart_data.iloc[1]
-            insight += f" Diikuti oleh Kecamatan {second_kecamatan[kecamatan_col]} dengan {second_kecamatan[value_col]:,.0f} kejadian."
-        
-        insight += f" Rata-rata kejadian bencana per kecamatan adalah {avg_bencana:.1f} kejadian. " \
-                  f"Terdapat {len(kecamatan_rawan)} kecamatan yang memiliki tingkat bencana di atas rata-rata."
-        
-        if not kecamatan_aman.empty:
-            insight += f" Ada {len(kecamatan_aman)} kecamatan yang tidak mengalami bencana dalam periode ini."
-        
-        return insight
+        map_data['Kecamatan'] = map_data['Kecamatan'].str.strip().str.title()
+        return map_data
         
     except Exception as e:
-        return f"Error dalam analisis: {str(e)}"
+        return None
 
-def analyze_kekerasan_total_yearly(data, selected_years):
-    """Analyze total kekerasan yearly trend"""
+def prepare_bantuan_sosial_data_for_map(data, selected_years):
+    """Prepare bantuan sosial data for mapping"""
     try:
-        if 'Kekerasan Anak' not in data or 'Bentuk Kekerasan Perempuan' not in data:
-            return "Data kekerasan tidak lengkap untuk analisis."
+        if 'Bantuan Sosial' not in data:
+            return None
         
-        df_anak = data['Kekerasan Anak'].copy()
-        df_perempuan = data['Bentuk Kekerasan Perempuan'].copy()
+        df = data['Bantuan Sosial'].copy()
         
-        if "Semua Tahun" not in selected_years:
-            df_anak = df_anak[df_anak['Tahun'].isin(selected_years)]
-            df_perempuan = df_perempuan[df_perempuan['Tahun'].isin(selected_years)]
+        kecamatan_col = None
+        penerima_col = None
+        tahun_col = None
         
-        anak_yearly = df_anak.groupby('Tahun')['Jumlah_Kasus'].sum().reset_index()
-        perempuan_yearly = df_perempuan.groupby('Tahun')['Jumlah_Kasus'].sum().reset_index()
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'kecamatan' in col_lower:
+                kecamatan_col = col
+            elif 'penerima' in col_lower:
+                penerima_col = col
+            elif 'tahun' in col_lower:
+                tahun_col = col
         
-        if anak_yearly.empty or perempuan_yearly.empty:
-            return "Tidak ada data untuk periode yang dipilih."
+        if not all([kecamatan_col, penerima_col]):
+            return None
         
-        # Find insights
-        total_anak = anak_yearly['Jumlah_Kasus'].sum()
-        total_perempuan = perempuan_yearly['Jumlah_Kasus'].sum()
+        if tahun_col and "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
         
-        max_anak_year = anak_yearly.loc[anak_yearly['Jumlah_Kasus'].idxmax(), 'Tahun']
-        max_anak_cases = anak_yearly['Jumlah_Kasus'].max()
+        map_data = df.groupby(kecamatan_col)[penerima_col].sum().reset_index()
+        map_data.columns = ['Kecamatan', 'Total_Penerima']
         
-        max_perempuan_year = perempuan_yearly.loc[perempuan_yearly['Jumlah_Kasus'].idxmax(), 'Tahun']
-        max_perempuan_cases = perempuan_yearly['Jumlah_Kasus'].max()
+        map_data['Kecamatan'] = map_data['Kecamatan'].str.strip().str.title()
+        return map_data
         
-        # Trend analysis
-        anak_trend = "naik" if anak_yearly.iloc[-1]['Jumlah_Kasus'] > anak_yearly.iloc[0]['Jumlah_Kasus'] else "turun"
-        perempuan_trend = "naik" if perempuan_yearly.iloc[-1]['Jumlah_Kasus'] > perempuan_yearly.iloc[0]['Jumlah_Kasus'] else "turun"
+    except Exception as e:
+        return None
+
+def prepare_kb_performance_data_for_map(data):
+    """Prepare KB performance data for mapping"""
+    try:
+        if 'Data Kb Performance' not in data:
+            return None
         
-        insight = f"Total kasus kekerasan anak adalah {total_anak:,.0f} kasus, dengan puncak tertinggi pada tahun {max_anak_year} " \
-                 f"({max_anak_cases:,.0f} kasus). Total kasus kekerasan perempuan adalah {total_perempuan:,.0f} kasus, " \
-                 f"dengan puncak tertinggi pada tahun {max_perempuan_year} ({max_perempuan_cases:,.0f} kasus). " \
-                 f"Tren kekerasan anak menunjukkan kecenderungan {anak_trend}, " \
-                 f"sedangkan kekerasan perempuan cenderung {perempuan_trend}."
+        df = data['Data Kb Performance'].copy()
+        
+        kecamatan_col = None
+        growth_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'kecamatan' in col_lower:
+                kecamatan_col = col
+            elif any(word in col_lower for word in ['growth', 'pertumbuhan', '2024']):
+                growth_col = col
+                break
+        
+        if not all([kecamatan_col, growth_col]):
+            return None
+        
+        # Clean growth data
+        df_clean = df.copy()
+        if df_clean[growth_col].dtype == 'object':
+            df_clean[growth_col + '_numeric'] = pd.to_numeric(
+                df_clean[growth_col].astype(str)
+                .str.replace('%', '')
+                .str.replace(',', '')
+                .str.strip(), 
+                errors='coerce'
+            )
+            numeric_col = growth_col + '_numeric'
+        else:
+            numeric_col = growth_col
+        
+        map_data = df_clean[[kecamatan_col, numeric_col]].copy()
+        map_data.columns = ['Kecamatan', 'Growth_Rate']
+        map_data = map_data.dropna()
+        
+        map_data['Kecamatan'] = map_data['Kecamatan'].str.strip().str.title()
+        return map_data
+        
+    except Exception as e:
+        return None
+
+def prepare_peserta_kb_data_for_map(data, selected_years):
+    """Prepare peserta KB data for mapping"""
+    try:
+        if 'Peserta Kb' not in data:
+            return None
+        
+        df = data['Peserta Kb'].copy()
+        
+        kecamatan_col = None
+        peserta_col = None
+        tahun_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'kecamatan' in col_lower:
+                kecamatan_col = col
+            elif 'peserta' in col_lower:
+                peserta_col = col
+            elif 'tahun' in col_lower:
+                tahun_col = col
+        
+        if not all([kecamatan_col, peserta_col]):
+            return None
+        
+        if tahun_col and "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        map_data = df.groupby(kecamatan_col)[peserta_col].sum().reset_index()
+        map_data.columns = ['Kecamatan', 'Total_Peserta']
+        
+        map_data['Kecamatan'] = map_data['Kecamatan'].str.strip().str.title()
+        return map_data
+        
+    except Exception as e:
+        return None
+
+# ===========================
+# MAP CREATION FUNCTIONS
+# ===========================
+
+def create_map_with_data(map_data, map_type, selected_years=None):
+    """Create a map with different data types"""
+    try:
+        # Koordinat tengah Kabupaten Malang yang lebih akurat
+        center_lat = -8.1667
+        center_lon = 112.6333
+        
+        m = folium.Map(
+            location=[center_lat, center_lon],
+            zoom_start=10,
+            tiles='OpenStreetMap',
+            width='100%',
+            height='500px'
+        )
+        
+        # Koordinat kecamatan
+        kecamatan_coords = {
+            'Dau': [-7.9167, 112.5833],
+            'Pujon': [-7.8667, 112.4833],
+            'Ngantang': [-7.7667, 112.4333],
+            'Kasembon': [-7.8167, 112.3833],
+            'Singosari': [-7.8833, 112.6667],
+            'Lawang': [-7.8333, 112.6833],
+            'Pakisaji': [-8.0667, 112.6167],
+            'Tajinan': [-8.1500, 112.5833],
+            'Tumpang': [-8.0167, 112.7333],
+            'Pakis': [-7.9333, 112.7167],
+            'Jabung': [-8.0833, 112.7833],
+            'Wajak': [-8.1167, 112.7333],
+            'Dampit': [-8.2167, 112.7500],
+            'Tirtoyudo': [-8.3333, 112.6833],
+            'Ampelgading': [-8.2833, 112.6167],
+            'Poncokusumo': [-8.0500, 112.7833],
+            'Wagir': [-8.0333, 112.5500],
+            'Karangploso': [-7.9167, 112.6000],
+            'Gondanglegi': [-8.1500, 112.6833],
+            'Kepanjen': [-8.1333, 112.5833],
+            'Sumberpucung': [-8.1000, 112.4833],
+            'Sumbermanjing Wetan': [-8.3500, 112.5833],
+            'Donomulyo': [-8.4000, 112.5000],
+            'Pagak': [-8.3667, 112.4500],
+            'Bantur': [-8.3167, 112.5167],
+            'Turen': [-8.1667, 112.6000],
+            'Kalipare': [-8.2000, 112.5500],
+            'Bululawang': [-8.0833, 112.6000],
+            'Ngajum': [-8.1167, 112.5167],
+            'Gedangan': [-8.0667, 112.7667],
+            'Kromengan': [-8.1833, 112.5667],
+            'Wonosari': [-8.2833, 112.5167],
+            'Pagelaran': [-8.3167, 112.4833]
+        }
+        
+        if map_data is not None and not map_data.empty:
+            # Tentukan kolom value, unit, dan icon berdasarkan map_type
+            if map_type == "Bencana Alam":
+                value_col = 'Total_Bencana'
+                unit = ' kejadian bencana'
+                icon_base = '🌊'
+                # Icon untuk bencana - menggunakan sistem bahaya
+                def get_disaster_icon_color(value, max_val):
+                    if value == 0:
+                        return 'green', 'ok'
+                    elif value <= max_val * 0.3:
+                        return 'lightgreen', 'info-sign'
+                    elif value <= max_val * 0.6:
+                        return 'orange', 'warning-sign'
+                    else:
+                        return 'red', 'exclamation-sign'
+                        
+            elif map_type == "Bantuan Sosial":
+                value_col = 'Total_Penerima'
+                unit = ' penerima bantuan'
+                icon_base = '👥'
+                def get_bantuan_icon_color(value, max_val):
+                    if value == 0:
+                        return 'red', 'remove'
+                    elif value <= max_val * 0.3:
+                        return 'orange', 'user'
+                    elif value <= max_val * 0.6:
+                        return 'lightblue', 'heart'
+                    else:
+                        return 'green', 'star'
+                        
+            elif map_type == "KB Performance":
+                value_col = 'Growth_Rate'
+                unit = '%'
+                icon_base = '📈'
+                def get_kb_performance_icon_color(value):
+                    if value >= 2:
+                        return 'green', 'thumbs-up'
+                    elif value >= 0:
+                        return 'lightgreen', 'arrow-up'
+                    elif value >= -5:
+                        return 'orange', 'minus'
+                    else:
+                        return 'red', 'arrow-down'
+                        
+            elif map_type == "Peserta KB":
+                value_col = 'Total_Peserta'
+                unit = ' peserta KB'
+                icon_base = '👶'
+                def get_peserta_kb_icon_color(value, max_val):
+                    if value == 0:
+                        return 'red', 'remove'
+                    elif value <= max_val * 0.3:
+                        return 'orange', 'user'
+                    elif value <= max_val * 0.6:
+                        return 'lightblue', 'heart'
+                    else:
+                        return 'green', 'star'
+            else:
+                return m
+            
+            if value_col not in map_data.columns:
+                return m
+            
+            max_value = map_data[value_col].max()
+            min_value = map_data[value_col].min()
+            
+            for _, row in map_data.iterrows():
+                kecamatan = row['Kecamatan']
+                value = row[value_col]
+                
+                coords = kecamatan_coords.get(kecamatan)
+                if coords:
+                    # Tentukan warna dan icon berdasarkan jenis data
+                    if map_type == "Bencana Alam":
+                        color, icon = get_disaster_icon_color(value, max_value)
+                    elif map_type == "Bantuan Sosial":
+                        color, icon = get_bantuan_icon_color(value, max_value)
+                    elif map_type == "KB Performance":
+                        color, icon = get_kb_performance_icon_color(value)
+                    elif map_type == "Peserta KB":
+                        color, icon = get_peserta_kb_icon_color(value, max_value)
+                    
+                    # Format nilai untuk popup
+                    if map_type == "KB Performance":
+                        formatted_value = f"{value:.2f}{unit}"
+                    else:
+                        formatted_value = f"{value:,.0f}{unit}"
+                    
+                    popup_content = f"""
+                    <div style="font-family: Arial, sans-serif; min-width: 200px;">
+                        <h4 style="margin: 0; color: #2c3e50;">{kecamatan}</h4>
+                        <hr style="margin: 5px 0;">
+                        <p style="margin: 5px 0;"><strong>{icon_base} {map_type}:</strong> {formatted_value}</p>
+                    </div>
+                    """
+                    
+                    folium.Marker(
+                        location=coords,
+                        popup=folium.Popup(popup_content, max_width=300),
+                        tooltip=f"{kecamatan}: {formatted_value}",
+                        icon=folium.Icon(color=color, icon=icon)
+                    ).add_to(m)
+        
+        return m
+        
+    except Exception as e:
+        return None
+
+# ===========================
+# MAP ANALYSIS FUNCTIONS
+# ===========================
+
+def analyze_map_data_generic(map_data, map_type, selected_years=None):
+    """Generic function to analyze map data"""
+    try:
+        if map_data is None or map_data.empty:
+            return f"Tidak ada data {map_type.lower()} untuk dianalisis."
+        
+        # Tentukan kolom value dan unit berdasarkan map_type
+        if map_type == "Bencana Alam":
+            value_col = 'Total_Bencana'
+            unit = 'kejadian bencana'
+            metric = 'bencana'
+        elif map_type == "Bantuan Sosial":
+            value_col = 'Total_Penerima'
+            unit = 'penerima bantuan'
+            metric = 'penerima'
+        elif map_type == "KB Performance":
+            value_col = 'Growth_Rate'
+            unit = '% pertumbuhan'
+            metric = 'pertumbuhan'
+        elif map_type == "Peserta KB":
+            value_col = 'Total_Peserta'
+            unit = 'peserta KB'
+            metric = 'peserta'
+        else:
+            return "Jenis data tidak dikenali."
+        
+        if value_col not in map_data.columns:
+            return f"Data {map_type.lower()} tidak memiliki kolom yang sesuai."
+        
+        total_kecamatan = len(map_data)
+        
+        if map_type == "KB Performance":
+            # Analisis khusus untuk KB Performance
+            positive_growth = len(map_data[map_data[value_col] > 0])
+            negative_growth = len(map_data[map_data[value_col] < 0])
+            avg_growth = map_data[value_col].mean()
+            
+            top_kecamatan = map_data.loc[map_data[value_col].idxmax()]
+            worst_kecamatan = map_data.loc[map_data[value_col].idxmin()]
+            
+            insight = f"Dari {total_kecamatan} kecamatan, {positive_growth} kecamatan mengalami pertumbuhan positif " \
+                     f"dan {negative_growth} kecamatan mengalami penurunan. "
+            insight += f"Kecamatan {top_kecamatan['Kecamatan']} memiliki pertumbuhan tertinggi dengan {top_kecamatan[value_col]:.2f}%, " \
+                      f"sedangkan Kecamatan {worst_kecamatan['Kecamatan']} mengalami penurunan terbesar dengan {worst_kecamatan[value_col]:.2f}%. "
+            insight += f"Rata-rata pertumbuhan KB di Kabupaten Malang adalah {avg_growth:.2f}%."
+            
+        else:
+            # Analisis untuk data lainnya
+            total_value = map_data[value_col].sum()
+            avg_value = map_data[value_col].mean()
+            
+            top_3 = map_data.nlargest(3, value_col)
+            zero_value = map_data[map_data[value_col] == 0] if map_type == "Bencana Alam" else pd.DataFrame()
+            
+            insight = f"Total {unit} di Kabupaten Malang adalah {total_value:,.0f}. "
+            
+            if not top_3.empty:
+                top_kecamatan = top_3.iloc[0]
+                insight += f"Kecamatan {top_kecamatan['Kecamatan']} memiliki {metric} tertinggi dengan {top_kecamatan[value_col]:,.0f} {unit}. "
+                
+                if len(top_3) > 1:
+                    second_kecamatan = top_3.iloc[1]
+                    insight += f"Diikuti oleh Kecamatan {second_kecamatan['Kecamatan']} dengan {second_kecamatan[value_col]:,.0f} {unit}. "
+            
+            if not zero_value.empty and map_type == "Bencana Alam":
+                insight += f"Terdapat {len(zero_value)} kecamatan yang tidak mengalami bencana dalam periode ini. "
+            
+            insight += f"Rata-rata {unit} per kecamatan adalah {avg_value:.1f}."
+            
+            # Tambahan untuk periode waktu
+            if selected_years and "Semua Tahun" not in selected_years:
+                period = ', '.join(map(str, selected_years))
+                insight += f" Data ini mencakup periode tahun {period}."
         
         return insight
         
     except Exception as e:
-        return f"Error dalam analisis: {str(e)}"
-    
+        return f"Error dalam analisis peta {map_type.lower()}: {str(e)}"
+
 # ===========================
-# ANALYSIS FUNCTIONS UNTUK KEKERASAN - TAMBAHAN
+# ANALYSIS FUNCTIONS UNTUK KEKERASAN - LENGKAP
 # ===========================
 
 def analyze_kekerasan_gender_comparison(data, selected_years):
@@ -1120,6 +1307,295 @@ def create_kekerasan_anak_cumulative_chart(data, selected_years):
     except Exception as e:
         return None
 
+# ===========================
+# ANALYSIS FUNCTIONS - DIPERBAIKI DAN LENGKAP
+# ===========================
+def analyze_penerima_per_tahun(data, selected_years):
+    """Analyze penerima bantuan per tahun data"""
+    try:
+        if 'Bantuan Sosial' not in data:
+            return "Data bantuan sosial tidak tersedia untuk analisis."
+        
+        df = data['Bantuan Sosial'].copy()
+        
+        tahun_col = None
+        penerima_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'tahun' in col_lower:
+                tahun_col = col
+            elif 'penerima' in col_lower:
+                penerima_col = col
+        
+        if not all([tahun_col, penerima_col]):
+            return "Kolom tahun atau penerima tidak ditemukan."
+        
+        if "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        yearly_data = df.groupby(tahun_col)[penerima_col].agg(['sum', 'mean']).reset_index()
+        yearly_data.columns = [tahun_col, 'Total_Penerima', 'Rata_rata_Penerima']
+        
+        if yearly_data.empty:
+            return "Tidak ada data untuk periode yang dipilih."
+        
+        # Find insights
+        max_year = yearly_data.loc[yearly_data['Total_Penerima'].idxmax(), tahun_col]
+        max_total = yearly_data['Total_Penerima'].max()
+        min_year = yearly_data.loc[yearly_data['Total_Penerima'].idxmin(), tahun_col]
+        min_total = yearly_data['Total_Penerima'].min()
+        
+        avg_highest_year = yearly_data.loc[yearly_data['Rata_rata_Penerima'].idxmax(), tahun_col]
+        avg_highest = yearly_data['Rata_rata_Penerima'].max()
+        
+        total_all_years = yearly_data['Total_Penerima'].sum()
+        
+        insight = f"Tahun {max_year} adalah tahun dengan penerima bantuan terbanyak ({max_total:,.0f} orang), " \
+                 f"sedangkan tahun {min_year} memiliki penerima paling sedikit ({min_total:,.0f} orang). " \
+                 f"Rata-rata penerima per program tertinggi terjadi pada tahun {avg_highest_year} " \
+                 f"dengan {avg_highest:,.0f} orang per program. " \
+                 f"Total penerima bantuan dalam periode yang dipilih adalah {total_all_years:,.0f} orang."
+        
+        return insight
+        
+    except Exception as e:
+        return f"Error dalam analisis: {str(e)}"
+
+def analyze_bantuan_donut(data, selected_years):
+    """Analyze bantuan distribution"""
+    try:
+        if 'Bantuan Sosial' not in data:
+            return "Data bantuan sosial tidak tersedia untuk analisis."
+        
+        df = data['Bantuan Sosial'].copy()
+        
+        program_col = None
+        penerima_col = None
+        tahun_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'program' in col_lower and 'type' in col_lower:
+                program_col = col
+            elif 'penerima' in col_lower:
+                penerima_col = col
+            elif 'tahun' in col_lower:
+                tahun_col = col
+        
+        if not all([program_col, penerima_col]):
+            return "Kolom program atau penerima tidak ditemukan."
+        
+        if tahun_col and "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        chart_data = df.groupby(program_col)[penerima_col].sum().reset_index()
+        chart_data = chart_data.sort_values(penerima_col, ascending=False)
+        
+        if chart_data.empty:
+            return "Tidak ada data untuk periode yang dipilih."
+        
+        # Find insights
+        top_program = chart_data.iloc[0]
+        total_penerima = chart_data[penerima_col].sum()
+        percentage_top = (top_program[penerima_col] / total_penerima) * 100
+        
+        second_program = chart_data.iloc[1] if len(chart_data) > 1 else None
+        
+        insight = f"Program {top_program[program_col]} memiliki penerima terbanyak dengan {top_program[penerima_col]:,.0f} orang " \
+                 f"({percentage_top:.1f}% dari total penerima)."
+        
+        if second_program is not None:
+            percentage_second = (second_program[penerima_col] / total_penerima) * 100
+            insight += f" Diikuti oleh program {second_program[program_col]} dengan {second_program[penerima_col]:,.0f} orang " \
+                      f"({percentage_second:.1f}%)."
+        
+        insight += f" Total ada {len(chart_data)} jenis program bantuan dengan {total_penerima:,.0f} penerima."
+        
+        return insight
+        
+    except Exception as e:
+        return f"Error dalam analisis: {str(e)}"
+
+def analyze_jenis_bencana_pie(data, selected_years):
+    """Analyze jenis bencana distribution"""
+    try:
+        if 'Jenis Bencana' not in data:
+            return "Data jenis bencana tidak tersedia untuk analisis."
+        
+        df = data['Jenis Bencana'].copy()
+        
+        if 'Jenis_Bencana_Nama' in df.columns:
+            jenis_col = 'Jenis_Bencana_Nama'
+        else:
+            if 'Jenis_Bencana' in df.columns:
+                df['Jenis_Bencana_Display'] = df['Jenis_Bencana'].astype(str).str.replace('_', ' ').str.title()
+                jenis_col = 'Jenis_Bencana_Display'
+            else:
+                return "Kolom jenis bencana tidak ditemukan."
+        
+        jumlah_col = None
+        for col in df.columns:
+            if 'jumlah' in col.lower() and df[col].dtype in ['int64', 'float64']:
+                jumlah_col = col
+                break
+        
+        if not jumlah_col:
+            return "Kolom jumlah bencana tidak ditemukan."
+        
+        tahun_col = None
+        for col in df.columns:
+            if 'tahun' in col.lower():
+                tahun_col = col
+                break
+        
+        if tahun_col and "Semua Tahun" not in selected_years:
+            df_filtered = df[df[tahun_col].isin(selected_years)]
+        else:
+            df_filtered = df
+        
+        if df_filtered.empty:
+            return "Tidak ada data untuk periode yang dipilih."
+        
+        chart_data = df_filtered.groupby(jenis_col)[jumlah_col].sum().reset_index()
+        chart_data = chart_data[chart_data[jumlah_col] > 0].sort_values(jumlah_col, ascending=False)
+        
+        if chart_data.empty:
+            return "Tidak ada data bencana untuk periode yang dipilih."
+        
+        # Find insights
+        total_bencana = chart_data[jumlah_col].sum()
+        top_bencana = chart_data.iloc[0]
+        percentage_top = (top_bencana[jumlah_col] / total_bencana) * 100
+        
+        insight = f"{top_bencana[jenis_col]} adalah jenis bencana yang paling sering terjadi dengan {top_bencana[jumlah_col]:,.0f} kejadian " \
+                 f"({percentage_top:.1f}% dari total bencana)."
+        
+        if len(chart_data) > 1:
+            second_bencana = chart_data.iloc[1]
+            percentage_second = (second_bencana[jumlah_col] / total_bencana) * 100
+            insight += f" Diikuti oleh {second_bencana[jenis_col]} dengan {second_bencana[jumlah_col]:,.0f} kejadian " \
+                      f"({percentage_second:.1f}%)."
+        
+        insight += f" Total tercatat {total_bencana:,.0f} kejadian bencana dari {len(chart_data)} jenis bencana yang berbeda."
+        
+        return insight
+        
+    except Exception as e:
+        return f"Error dalam analisis: {str(e)}"
+
+def analyze_bencana_kecamatan(data, selected_years):
+    """Analyze bencana per kecamatan"""
+    try:
+        if 'Bencana Alam' not in data:
+            return "Data bencana alam tidak tersedia untuk analisis."
+        
+        df = data['Bencana Alam'].copy()
+        
+        kecamatan_col = None
+        jumlah_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'kecamatan' in col_lower:
+                kecamatan_col = col
+            elif any(word in col_lower for word in ['jumlah', 'bencana']) and df[col].dtype in ['int64', 'float64']:
+                jumlah_col = col
+        
+        if not kecamatan_col:
+            return "Kolom kecamatan tidak ditemukan."
+        
+        tahun_col = None
+        for col in df.columns:
+            if 'tahun' in col.lower():
+                tahun_col = col
+                break
+        
+        if tahun_col and "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        if jumlah_col:
+            chart_data = df.groupby(kecamatan_col)[jumlah_col].sum().reset_index()
+            value_col = jumlah_col
+        else:
+            chart_data = df[kecamatan_col].value_counts().reset_index()
+            chart_data.columns = [kecamatan_col, 'Count']
+            value_col = 'Count'
+        
+        chart_data = chart_data.sort_values(value_col, ascending=False)
+        
+        if chart_data.empty:
+            return "Tidak ada data untuk periode yang dipilih."
+        
+        # Find insights
+        top_kecamatan = chart_data.iloc[0]
+        total_bencana = chart_data[value_col].sum()
+        avg_bencana = chart_data[value_col].mean()
+        
+        kecamatan_aman = chart_data[chart_data[value_col] == 0]
+        kecamatan_rawan = chart_data[chart_data[value_col] >= avg_bencana]
+        
+        insight = f"Kecamatan {top_kecamatan[kecamatan_col]} adalah daerah paling rawan bencana dengan {top_kecamatan[value_col]:,.0f} kejadian bencana."
+        
+        if len(chart_data) > 1:
+            second_kecamatan = chart_data.iloc[1]
+            insight += f" Diikuti oleh Kecamatan {second_kecamatan[kecamatan_col]} dengan {second_kecamatan[value_col]:,.0f} kejadian."
+        
+        insight += f" Rata-rata kejadian bencana per kecamatan adalah {avg_bencana:.1f} kejadian. " \
+                  f"Terdapat {len(kecamatan_rawan)} kecamatan yang memiliki tingkat bencana di atas rata-rata."
+        
+        if not kecamatan_aman.empty:
+            insight += f" Ada {len(kecamatan_aman)} kecamatan yang tidak mengalami bencana dalam periode ini."
+        
+        return insight
+        
+    except Exception as e:
+        return f"Error dalam analisis: {str(e)}"
+
+def analyze_kekerasan_total_yearly(data, selected_years):
+    """Analyze total kekerasan yearly trend"""
+    try:
+        if 'Kekerasan Anak' not in data or 'Bentuk Kekerasan Perempuan' not in data:
+            return "Data kekerasan tidak lengkap untuk analisis."
+        
+        df_anak = data['Kekerasan Anak'].copy()
+        df_perempuan = data['Bentuk Kekerasan Perempuan'].copy()
+        
+        if "Semua Tahun" not in selected_years:
+            df_anak = df_anak[df_anak['Tahun'].isin(selected_years)]
+            df_perempuan = df_perempuan[df_perempuan['Tahun'].isin(selected_years)]
+        
+        anak_yearly = df_anak.groupby('Tahun')['Jumlah_Kasus'].sum().reset_index()
+        perempuan_yearly = df_perempuan.groupby('Tahun')['Jumlah_Kasus'].sum().reset_index()
+        
+        if anak_yearly.empty or perempuan_yearly.empty:
+            return "Tidak ada data untuk periode yang dipilih."
+        
+        # Find insights
+        total_anak = anak_yearly['Jumlah_Kasus'].sum()
+        total_perempuan = perempuan_yearly['Jumlah_Kasus'].sum()
+        
+        max_anak_year = anak_yearly.loc[anak_yearly['Jumlah_Kasus'].idxmax(), 'Tahun']
+        max_anak_cases = anak_yearly['Jumlah_Kasus'].max()
+        
+        max_perempuan_year = perempuan_yearly.loc[perempuan_yearly['Jumlah_Kasus'].idxmax(), 'Tahun']
+        max_perempuan_cases = perempuan_yearly['Jumlah_Kasus'].max()
+        
+        # Trend analysis
+        anak_trend = "naik" if anak_yearly.iloc[-1]['Jumlah_Kasus'] > anak_yearly.iloc[0]['Jumlah_Kasus'] else "turun"
+        perempuan_trend = "naik" if perempuan_yearly.iloc[-1]['Jumlah_Kasus'] > perempuan_yearly.iloc[0]['Jumlah_Kasus'] else "turun"
+        
+        insight = f"Total kasus kekerasan anak adalah {total_anak:,.0f} kasus, dengan puncak tertinggi pada tahun {max_anak_year} " \
+                 f"({max_anak_cases:,.0f} kasus). Total kasus kekerasan perempuan adalah {total_perempuan:,.0f} kasus, " \
+                 f"dengan puncak tertinggi pada tahun {max_perempuan_year} ({max_perempuan_cases:,.0f} kasus). " \
+                 f"Tren kekerasan anak menunjukkan kecenderungan {anak_trend}, " \
+                 f"sedangkan kekerasan perempuan cenderung {perempuan_trend}."
+        
+        return insight
+        
+    except Exception as e:
+        return f"Error dalam analisis: {str(e)}"
+
 def analyze_kontrasepsi_chart(data, selected_years):
     """Analyze kontrasepsi usage"""
     try:
@@ -1180,163 +1656,119 @@ def analyze_kontrasepsi_chart(data, selected_years):
     except Exception as e:
         return f"Error dalam analisis: {str(e)}"
 
-# ===========================
-# MAP FUNCTIONS (sama seperti sebelumnya)
-# ===========================
-def prepare_disaster_data_for_map(data, selected_years):
-    """Prepare disaster data for mapping"""
+def analyze_kb_performance_table(data):
+    """Analyze KB Performance Table"""
     try:
-        if 'Bencana Alam' not in data:
-            return None
+        if 'Data Kb Performance' not in data:
+            return "Data performa KB tidak tersedia untuk analisis."
         
-        df = data['Bencana Alam'].copy()
+        df = data['Data Kb Performance'].copy()
         
+        if df.empty:
+            return "Tidak ada data performa KB untuk dianalisis."
+        
+        # Find columns dynamically
         kecamatan_col = None
-        jumlah_col = None
-        tahun_col = None
+        growth_col = None
         
         for col in df.columns:
             col_lower = col.lower().strip()
             if 'kecamatan' in col_lower:
                 kecamatan_col = col
-            elif 'tahun' in col_lower:
-                tahun_col = col
-            elif any(word in col_lower for word in ['jumlah', 'bencana']) and df[col].dtype in ['int64', 'float64']:
-                jumlah_col = col
+            elif any(word in col_lower for word in ['growth', 'pertumbuhan', 'tumbuh', '%']):
+                growth_col = col
+                break
         
         if not kecamatan_col:
-            return None
+            return "Data kecamatan tidak ditemukan dalam tabel performa KB."
         
-        if tahun_col and "Semua Tahun" not in selected_years:
-            df = df[df[tahun_col].isin(selected_years)]
+        if not growth_col:
+            # Try to find any numeric column that might represent performance
+            for col in df.columns:
+                if col != kecamatan_col and (df[col].dtype in ['int64', 'float64'] or 
+                   (df[col].dtype == 'object' and any(str(val).replace('%','').replace(',','').replace('.','').isdigit() 
+                                                     for val in df[col].dropna().head(3)))):
+                    growth_col = col
+                    break
         
-        if jumlah_col:
-            map_data = df.groupby(kecamatan_col)[jumlah_col].sum().reset_index()
-            map_data.columns = ['Kecamatan', 'Total_Bencana']
-        else:
-            map_data = df[kecamatan_col].value_counts().reset_index()
-            map_data.columns = ['Kecamatan', 'Total_Bencana']
+        if not growth_col:
+            return f"Data mencakup {len(df)} kecamatan namun tidak ditemukan kolom pertumbuhan untuk dianalisis."
         
-        map_data['Kecamatan'] = map_data['Kecamatan'].str.strip().str.title()
-        return map_data
+        # Clean and convert growth data
+        df_clean = df.copy()
         
-    except Exception as e:
-        return None
-
-def create_simple_disaster_map(disaster_data):
-    """Create a simple map with proper sizing"""
-    try:
-        center_lat = -8.1
-        center_lon = 112.6
-        
-        m = folium.Map(
-            location=[center_lat, center_lon],
-            zoom_start=10,
-            tiles='OpenStreetMap',
-            width='100%',
-            height='500px'  # Diperbesar dari 400px ke 500px
-        )
-        
-        if disaster_data is not None and not disaster_data.empty:
-            kecamatan_coords = {
-                'Dau': [-7.9167, 112.5833],
-                'Pujon': [-7.8667, 112.4833],
-                'Ngantang': [-7.7667, 112.4333],
-                'Kasembon': [-7.8167, 112.3833],
-                'Singosari': [-7.8833, 112.6667],
-                'Lawang': [-7.8333, 112.6833],
-                'Pakisaji': [-8.0667, 112.6167],
-                'Tajinan': [-8.1500, 112.5833],
-                'Tumpang': [-8.0167, 112.7333],
-                'Pakis': [-7.9333, 112.7167],
-                'Jabung': [-8.0833, 112.7833],
-                'Wajak': [-8.1167, 112.7333],
-                'Dampit': [-8.2167, 112.7500],
-                'Tirtoyudo': [-8.3333, 112.6833],
-                'Ampelgading': [-8.2833, 112.6167],
-                'Poncokusumo': [-8.0500, 112.7833],
-                'Wagir': [-8.0333, 112.5500],
-                'Karangploso': [-7.9167, 112.6000],
-                'Gondanglegi': [-8.1500, 112.6833],
-                'Kepanjen': [-8.1333, 112.5833],
-                'Sumberpucung': [-8.1000, 112.4833],
-                'Sumbermanjing Wetan': [-8.3500, 112.5833],
-            }
-            
-            max_disasters = disaster_data['Total_Bencana'].max()
-            
-            for _, row in disaster_data.iterrows():
-                kecamatan = row['Kecamatan']
-                disasters = row['Total_Bencana']
+        try:
+            if df_clean[growth_col].dtype == 'object':
+                # Remove %, commas, and convert to numeric
+                df_clean[growth_col + '_numeric'] = pd.to_numeric(
+                    df_clean[growth_col].astype(str)
+                    .str.replace('%', '')
+                    .str.replace(',', '')
+                    .str.replace('Rp', '')
+                    .str.strip(), 
+                    errors='coerce'
+                )
+                numeric_col = growth_col + '_numeric'
+            else:
+                numeric_col = growth_col
                 
-                coords = kecamatan_coords.get(kecamatan)
-                if coords:
-                    if disasters == 0:
-                        color = 'green'
-                        icon = 'ok'
-                    elif disasters <= max_disasters * 0.3:
-                        color = 'lightgreen'
-                        icon = 'info-sign'
-                    elif disasters <= max_disasters * 0.6:
-                        color = 'orange'
-                        icon = 'warning-sign'
-                    else:
-                        color = 'red'
-                        icon = 'exclamation-sign'
-                    
-                    popup_content = f"""
-                    <div style="font-family: Arial, sans-serif; min-width: 200px;">
-                        <h4 style="margin: 0; color: #2c3e50;">{kecamatan}</h4>
-                        <hr style="margin: 5px 0;">
-                        <p style="margin: 5px 0;"><strong>🌊 Total Bencana:</strong> {disasters}</p>
-                    </div>
-                    """
-                    
-                    folium.Marker(
-                        location=coords,
-                        popup=folium.Popup(popup_content, max_width=300),
-                        tooltip=f"{kecamatan}: {disasters} bencana",
-                        icon=folium.Icon(color=color, icon=icon)
-                    ).add_to(m)
+        except:
+            return f"Data performa KB mencakup {len(df)} kecamatan namun format data tidak dapat dianalisis."
         
-        return m
+        # Remove rows with NaN values
+        df_clean = df_clean.dropna(subset=[numeric_col])
         
-    except Exception as e:
-        return None
-
-def analyze_map_data(disaster_data):
-    """Analyze map data and return insights"""
-    try:
-        if disaster_data is None or disaster_data.empty:
-            return "Tidak ada data bencana untuk dianalisis."
+        if df_clean.empty or len(df_clean) < 2:
+            return f"Data performa KB mencakup {len(df)} kecamatan namun data numerik tidak mencukupi untuk analisis."
         
-        total_disasters = disaster_data['Total_Bencana'].sum()
-        total_kecamatan = len(disaster_data)
-        kecamatan_terdampak = len(disaster_data[disaster_data['Total_Bencana'] > 0])
-        avg_disasters = disaster_data['Total_Bencana'].mean()
+        # Find best and worst performers
+        best_idx = df_clean[numeric_col].idxmax()
+        worst_idx = df_clean[numeric_col].idxmin()
         
-        top_3 = disaster_data.nlargest(3, 'Total_Bencana')
-        kecamatan_aman = disaster_data[disaster_data['Total_Bencana'] == 0]
+        best_kecamatan = df_clean.loc[best_idx, kecamatan_col]
+        best_value = df_clean.loc[best_idx, numeric_col]
         
-        insight = f"Dari {total_kecamatan} kecamatan di Kabupaten Malang, {kecamatan_terdampak} kecamatan mengalami bencana " \
-                 f"dengan total {total_disasters} kejadian bencana. "
+        worst_kecamatan = df_clean.loc[worst_idx, kecamatan_col]
+        worst_value = df_clean.loc[worst_idx, numeric_col]
         
-        if not top_3.empty:
-            top_kecamatan = top_3.iloc[0]
-            insight += f"Kecamatan {top_kecamatan['Kecamatan']} adalah yang paling rawan dengan {top_kecamatan['Total_Bencana']} kejadian bencana. "
+        # Calculate statistics
+        avg_value = df_clean[numeric_col].mean()
+        total_kecamatan = len(df_clean)
         
-        if not kecamatan_aman.empty:
-            insight += f"Terdapat {len(kecamatan_aman)} kecamatan yang relatif aman (tidak ada kejadian bencana). "
+        # Determine if values are percentages or regular numbers
+        is_percentage = '%' in str(df[growth_col].iloc[0]) if not df[growth_col].empty else False
+        unit = '%' if is_percentage else ''
         
-        insight += f"Rata-rata kejadian bencana per kecamatan adalah {avg_disasters:.1f} kejadian."
+        # Build insight
+        insight = f"Kecamatan {best_kecamatan} menunjukkan performa KB terbaik dengan nilai {best_value:.1f}{unit}, " \
+                 f"sedangkan Kecamatan {worst_kecamatan} memiliki performa terendah dengan nilai {worst_value:.1f}{unit}. "
+        
+        # Add comparison context
+        if best_value > avg_value:
+            diff_best = best_value - avg_value
+            insight += f"Performa terbaik berada {diff_best:.1f}{unit} di atas rata-rata ({avg_value:.1f}{unit}). "
+        
+        if worst_value < avg_value:
+            diff_worst = avg_value - worst_value
+            insight += f"Performa terendah berada {diff_worst:.1f}{unit} di bawah rata-rata. "
+        
+        # Add performance gap information
+        performance_gap = best_value - worst_value
+        insight += f"Terdapat kesenjangan performa sebesar {performance_gap:.1f}{unit} antara kecamatan terbaik dan terburuk. "
+        
+        # Categorize performance levels
+        above_avg = len(df_clean[df_clean[numeric_col] > avg_value])
+        below_avg = len(df_clean[df_clean[numeric_col] < avg_value])
+        
+        insight += f"Dari {total_kecamatan} kecamatan, {above_avg} kecamatan berada di atas rata-rata dan {below_avg} kecamatan di bawah rata-rata."
         
         return insight
         
     except Exception as e:
-        return f"Error dalam analisis peta: {str(e)}"
+        return f"Data performa KB tersedia untuk {len(data.get('Data Kb Performance', []))} kecamatan namun tidak dapat dianalisis secara detail."
 
 # ===========================
-# DATA LOADING FROM LOCAL FILES (sama seperti sebelumnya)
+# DATA LOADING FROM LOCAL FILES
 # ===========================
 @st.cache_data
 def load_local_data():
@@ -1406,7 +1838,7 @@ def load_local_data():
     return data
 
 # ===========================
-# FUNCTION TO GET AVAILABLE YEARS (sama seperti sebelumnya)
+# FUNCTION TO GET AVAILABLE YEARS
 # ===========================
 def get_available_years(data):
     """Get available years from data (2020-2024 only)"""
@@ -1427,7 +1859,7 @@ def get_available_years(data):
     return sorted(list(available_years))
 
 # ===========================
-# CHIP SELECTION COMPONENT (sama seperti sebelumnya)
+# CHIP SELECTION COMPONENT
 # ===========================
 def create_year_chips(available_years, key):
     """Create chip-style year selection"""
@@ -1500,7 +1932,7 @@ def create_year_chips(available_years, key):
     return st.session_state[f"selected_years_{key}"]
 
 # ===========================
-# KPI CALCULATION (sama seperti sebelumnya)
+# KPI CALCULATION
 # ===========================
 def calculate_kpis(data, selected_years):
     """Calculate KPI values"""
@@ -1555,25 +1987,23 @@ def calculate_kpis(data, selected_years):
             
             kpis['total_bencana'] = int(total)
         
-        # 3. Kekerasan Anak - DIPERBAIKI
+        # 3. Kekerasan Anak
         if 'Kekerasan Anak' in data:
             df = data['Kekerasan Anak'].copy()
             
             if "Semua Tahun" not in selected_years:
                 df = df[df['Tahun'].isin(selected_years)]
             
-            # Hitung total kasus (tidak perlu filter 'Total' karena kita mau semua data bulanan)
             total = df['Jumlah_Kasus'].sum()
             kpis['kekerasan_anak'] = int(total)
         
-        # 4. Kekerasan Perempuan - DIPERBAIKI
+        # 4. Kekerasan Perempuan
         if 'Bentuk Kekerasan Perempuan' in data:
             df = data['Bentuk Kekerasan Perempuan'].copy()
             
             if "Semua Tahun" not in selected_years:
                 df = df[df['Tahun'].isin(selected_years)]
             
-            # Hitung total kasus
             total = df['Jumlah_Kasus'].sum()
             kpis['kekerasan_perempuan'] = int(total)
         
@@ -1613,7 +2043,7 @@ def calculate_kpis(data, selected_years):
     return kpis
 
 # ===========================
-# CHART FUNCTIONS (dipersingkat karena fokus pada analisis)
+# CHART FUNCTIONS - LENGKAP
 # ===========================
 
 # BANTUAN SOSIAL SECTION CHARTS
@@ -1799,7 +2229,7 @@ def create_jenis_bencana_pie_chart(data, selected_years):
             hovertemplate='<b>%{label}</b><br>Jumlah: %{value}<br>Persentase: %{percent}<br><extra></extra>'
         )
         
-        fig.update_layout(height=400)
+        fig.update_layout(height=500)
         return fig
         
     except Exception as e:
@@ -1903,7 +2333,7 @@ def create_kerugian_table(data, selected_years):
     except Exception as e:
         return None
 
-# KEKERASAN SECTION CHARTS
+# KEKERASAN SECTION CHARTS - LENGKAP
 def create_kekerasan_total_yearly_chart(data, selected_years):
     """Total Kekerasan per Tahun - Line Chart"""
     try:
@@ -2040,117 +2470,6 @@ def create_kb_performance_table(data):
     except Exception as e:
         return None
 
-def analyze_kb_performance_table(data):
-    """Analyze KB Performance Table - Focus on Best and Worst Performance"""
-    try:
-        if 'Data Kb Performance' not in data:
-            return "Data performa KB tidak tersedia untuk analisis."
-        
-        df = data['Data Kb Performance'].copy()
-        
-        if df.empty:
-            return "Tidak ada data performa KB untuk dianalisis."
-        
-        # Find columns dynamically
-        kecamatan_col = None
-        growth_col = None
-        
-        for col in df.columns:
-            col_lower = col.lower().strip()
-            if 'kecamatan' in col_lower:
-                kecamatan_col = col
-            elif any(word in col_lower for word in ['growth', 'pertumbuhan', 'tumbuh', '%']):
-                growth_col = col
-                break
-        
-        if not kecamatan_col:
-            return "Data kecamatan tidak ditemukan dalam tabel performa KB."
-        
-        if not growth_col:
-            # Try to find any numeric column that might represent performance
-            for col in df.columns:
-                if col != kecamatan_col and (df[col].dtype in ['int64', 'float64'] or 
-                   (df[col].dtype == 'object' and any(str(val).replace('%','').replace(',','').replace('.','').isdigit() 
-                                                     for val in df[col].dropna().head(3)))):
-                    growth_col = col
-                    break
-        
-        if not growth_col:
-            return f"Data mencakup {len(df)} kecamatan namun tidak ditemukan kolom pertumbuhan untuk dianalisis."
-        
-        # Clean and convert growth data
-        df_clean = df.copy()
-        
-        try:
-            if df_clean[growth_col].dtype == 'object':
-                # Remove %, commas, and convert to numeric
-                df_clean[growth_col + '_numeric'] = pd.to_numeric(
-                    df_clean[growth_col].astype(str)
-                    .str.replace('%', '')
-                    .str.replace(',', '')
-                    .str.replace('Rp', '')
-                    .str.strip(), 
-                    errors='coerce'
-                )
-                numeric_col = growth_col + '_numeric'
-            else:
-                numeric_col = growth_col
-                
-        except:
-            return f"Data performa KB mencakup {len(df)} kecamatan namun format data tidak dapat dianalisis."
-        
-        # Remove rows with NaN values
-        df_clean = df_clean.dropna(subset=[numeric_col])
-        
-        if df_clean.empty or len(df_clean) < 2:
-            return f"Data performa KB mencakup {len(df)} kecamatan namun data numerik tidak mencukupi untuk analisis."
-        
-        # Find best and worst performers
-        best_idx = df_clean[numeric_col].idxmax()
-        worst_idx = df_clean[numeric_col].idxmin()
-        
-        best_kecamatan = df_clean.loc[best_idx, kecamatan_col]
-        best_value = df_clean.loc[best_idx, numeric_col]
-        
-        worst_kecamatan = df_clean.loc[worst_idx, kecamatan_col]
-        worst_value = df_clean.loc[worst_idx, numeric_col]
-        
-        # Calculate statistics
-        avg_value = df_clean[numeric_col].mean()
-        total_kecamatan = len(df_clean)
-        
-        # Determine if values are percentages or regular numbers
-        is_percentage = '%' in str(df[growth_col].iloc[0]) if not df[growth_col].empty else False
-        unit = '%' if is_percentage else ''
-        
-        # Build insight
-        insight = f"Kecamatan {best_kecamatan} menunjukkan performa KB terbaik dengan nilai {best_value:.1f}{unit}, " \
-                 f"sedangkan Kecamatan {worst_kecamatan} memiliki performa terendah dengan nilai {worst_value:.1f}{unit}. "
-        
-        # Add comparison context
-        if best_value > avg_value:
-            diff_best = best_value - avg_value
-            insight += f"Performa terbaik berada {diff_best:.1f}{unit} di atas rata-rata ({avg_value:.1f}{unit}). "
-        
-        if worst_value < avg_value:
-            diff_worst = avg_value - worst_value
-            insight += f"Performa terendah berada {diff_worst:.1f}{unit} di bawah rata-rata. "
-        
-        # Add performance gap information
-        performance_gap = best_value - worst_value
-        insight += f"Terdapat kesenjangan performa sebesar {performance_gap:.1f}{unit} antara kecamatan terbaik dan terburuk. "
-        
-        # Categorize performance levels
-        above_avg = len(df_clean[df_clean[numeric_col] > avg_value])
-        below_avg = len(df_clean[df_clean[numeric_col] < avg_value])
-        
-        insight += f"Dari {total_kecamatan} kecamatan, {above_avg} kecamatan berada di atas rata-rata dan {below_avg} kecamatan di bawah rata-rata."
-        
-        return insight
-        
-    except Exception as e:
-        return f"Data performa KB tersedia untuk {len(data.get('Data Kb Performance', []))} kecamatan namun tidak dapat dianalisis secara detail."
-
 # ===========================
 # MAIN APPLICATION
 # ===========================
@@ -2270,65 +2589,181 @@ def main():
             </div>
             """, unsafe_allow_html=True)
         
-                # ===========================
-        # SECTION: PETA KERAWANAN BENCANA
+        # ===========================
+        # SECTION: PETA INTERAKTIF - FILTER YANG DIPERBAIKI
         # ===========================
         st.markdown("""
         <div class="map-container">
             <div class="map-header">
-                <h2>🗺️ PETA KERAWANAN BENCANA KABUPATEN MALANG</h2>
-                <p><em>Visualisasi tingkat kerawanan bencana per kecamatan berdasarkan data historis</em></p>
+                <h2>🗺️ PETA INTERAKTIF KABUPATEN MALANG</h2>
+                <p><em>Visualisasi data sosial per kecamatan berdasarkan berbagai indikator</em></p>
             </div>
         """, unsafe_allow_html=True)
         
-        # Prepare disaster data
-        disaster_data = prepare_disaster_data_for_map(data, selected_years)
+        # FILTER PETA YANG DIPERBAIKI - LEBIH RAPI
+        st.markdown("""
+        <div class="map-filter-container">
+            <h4 class="map-filter-header">🎯 Pilih Jenis Data untuk Visualisasi Peta</h4>
+        """, unsafe_allow_html=True)
         
-        # Create and display map - DIPERLEBAR DAN DITENGAH
-        simple_map = create_simple_disaster_map(disaster_data)
+        # Layout filter yang lebih rapi
+        filter_col1, filter_col2 = st.columns([2, 3])
         
-        if simple_map:
-            # Container untuk memusatkan peta
-            col1, col2, col3 = st.columns([1, 5, 1])  # Ratio 1:8:1 untuk memusatkan
+        with filter_col1:
+            map_type = st.selectbox(
+                "📊 Jenis Data:",
+                ["Bencana Alam", "Bantuan Sosial", "KB Performance", "Peserta KB"],
+                key="map_type_selector",
+                help="Pilih jenis data yang ingin ditampilkan pada peta"
+            )
+        
+        with filter_col2:
+            # Info box yang lebih informatif
+            if map_type == "Bencana Alam":
+                info_text = "🌊 Menampilkan tingkat kerawanan bencana per kecamatan berdasarkan data historis"
+                filter_applied = "📅 Filter tahun aktif"
+            elif map_type == "Bantuan Sosial":
+                info_text = "👥 Menampilkan distribusi penerima bantuan sosial per kecamatan"
+                filter_applied = "📅 Filter tahun aktif"
+            elif map_type == "KB Performance":
+                info_text = "📈 Menampilkan tingkat pertumbuhan program KB tahun 2024 vs 2023"
+                filter_applied = "📊 Data perbandingan 2023-2024"
+            elif map_type == "Peserta KB":
+                info_text = "👶 Menampilkan jumlah peserta program Keluarga Berencana per kecamatan"
+                filter_applied = "📅 Filter tahun aktif"
             
-            with col2:  # Peta di kolom tengah
-                map_data = st_folium(simple_map, width=2000, height=500)  # Diperlebar dari 700 ke 900, tinggi dari 400 ke 500
+            st.markdown(f"""
+            <div class="filter-info-box">
+                <strong>ℹ️ Informasi:</strong><br>
+                {info_text}<br>
+                <strong>🔧 Status Filter:</strong> {filter_applied}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Prepare data berdasarkan filter
+        if map_type == "Bencana Alam":
+            map_data = prepare_disaster_data_for_map(data, selected_years)
+        elif map_type == "Bantuan Sosial":
+            map_data = prepare_bantuan_sosial_data_for_map(data, selected_years)
+        elif map_type == "KB Performance":
+            map_data = prepare_kb_performance_data_for_map(data)
+        elif map_type == "Peserta KB":
+            map_data = prepare_peserta_kb_data_for_map(data, selected_years)
+        else:
+            map_data = None
+        
+        # Create and display map
+        interactive_map = create_map_with_data(map_data, map_type, selected_years)
+        
+        if interactive_map:
+            # Display map
+            map_data_result = st_folium(interactive_map, width='100%', height=500)
             
-            # Map statistics - WARNA HITAM
-            if disaster_data is not None and not disaster_data.empty:
-                total_disasters = disaster_data['Total_Bencana'].sum()
-                avg_disasters = disaster_data['Total_Bencana'].mean()
-                top_3 = disaster_data.nlargest(3, 'Total_Bencana')
+            # Map statistics and analysis
+            if map_data is not None and not map_data.empty:
+                # Analisis data
+                insight = analyze_map_data_generic(map_data, map_type, selected_years)
                 
+                # Statistik berdasarkan jenis data
+                if map_type == "Bencana Alam":
+                    total_value = map_data['Total_Bencana'].sum()
+                    avg_value = map_data['Total_Bencana'].mean()
+                    top_3 = map_data.nlargest(3, 'Total_Bencana')
+                    unit = "kejadian bencana"
+                    icon = "🌊"
+                elif map_type == "Bantuan Sosial":
+                    total_value = map_data['Total_Penerima'].sum()
+                    avg_value = map_data['Total_Penerima'].mean()
+                    top_3 = map_data.nlargest(3, 'Total_Penerima')
+                    unit = "penerima bantuan"
+                    icon = "👥"
+                elif map_type == "KB Performance":
+                    avg_value = map_data['Growth_Rate'].mean()
+                    positive_growth = len(map_data[map_data['Growth_Rate'] > 0])
+                    negative_growth = len(map_data[map_data['Growth_Rate'] < 0])
+                    top_3 = map_data.nlargest(3, 'Growth_Rate')
+                    unit = "% pertumbuhan"
+                    icon = "📈"
+                elif map_type == "Peserta KB":
+                    total_value = map_data['Total_Peserta'].sum()
+                    avg_value = map_data['Total_Peserta'].mean()
+                    top_3 = map_data.nlargest(3, 'Total_Peserta')
+                    unit = "peserta KB"
+                    icon = "👶"
+                
+                # Display statistics
+                if map_type == "KB Performance":
+                    st.markdown(f"""
+                    <div class="map-stats">
+                        <div class="map-stat-card">
+                            <h4>📊 Statistik {map_type}</h4>
+                            <p><strong>Total Kecamatan:</strong> {len(map_data)}</p>
+                            <p><strong>Pertumbuhan Positif:</strong> {positive_growth} kecamatan</p>
+                            <p><strong>Pertumbuhan Negatif:</strong> {negative_growth} kecamatan</p>
+                        </div>
+                        <div class="map-stat-card">
+                            <h4>🔝 Top 3 Pertumbuhan Terbaik</h4>
+                            {'<br>'.join([f"• {row['Kecamatan']}: {row['Growth_Rate']:.2f}%" for _, row in top_3.iterrows()])}
+                        </div>
+                        <div class="map-stat-card">
+                            <h4>📈 Ringkasan Pertumbuhan</h4>
+                            <p><strong>Rata-rata Pertumbuhan:</strong> {avg_value:.2f}%</p>
+                            <p><strong>Tertinggi:</strong> {top_3.iloc[0]['Growth_Rate']:.2f}%</p>
+                            <p><strong>Terendah:</strong> {map_data['Growth_Rate'].min():.2f}%</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div class="map-stats">
+                        <div class="map-stat-card">
+                            <h4>📊 Statistik {map_type}</h4>
+                            <p><strong>Total Kecamatan:</strong> {len(map_data)}</p>
+                            <p><strong>Total {unit.title()}:</strong> {total_value:,.0f}</p>
+                        </div>
+                        <div class="map-stat-card">
+                            <h4>🔝 Top 3 Kecamatan</h4>
+                            {'<br>'.join([f"• {row['Kecamatan']}: {row.iloc[1]:,.0f} {unit}" for _, row in top_3.iterrows()])}
+                        </div>
+                        <div class="map-stat-card">
+                            <h4>📈 Ringkasan Data</h4>
+                            <p><strong>Rata-rata per Kecamatan:</strong> {avg_value:.1f}</p>
+                            <p><strong>Tertinggi:</strong> {top_3.iloc[0].iloc[1]:,.0f}</p>
+                            <p><strong>Terendah:</strong> {map_data.iloc[:, 1].min():,.0f}</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Display insight
                 st.markdown(f"""
-                <div class="map-stats">
-                    <div class="map-stat-card">
-                        <h4>📊 Statistik Kerawanan</h4>
-                        <p><strong>Total Kecamatan:</strong> {len(disaster_data)}</p>
-                        <p><strong>Kecamatan Terdampak:</strong> {len(disaster_data[disaster_data['Total_Bencana'] > 0])}</p>
-                    </div>
-                    <div class="map-stat-card">
-                        <h4>🔥 Top 3 Kecamatan Rawan</h4>
-                        {'<br>'.join([f"• {row['Kecamatan']}: {row['Total_Bencana']} bencana" for _, row in top_3.iterrows()])}
-                    </div>
-                    <div class="map-stat-card">
-                        <h4>📈 Ringkasan Data</h4>
-                        <p><strong>Total Bencana:</strong> {total_disasters}</p>
-                        <p><strong>Rata-rata per Kecamatan:</strong> {avg_disasters:.1f}</p>
-                    </div>
+                <div class="chart-explanation">
+                    {icon} <strong>Hasil Analisis {map_type}:</strong> {insight}
                 </div>
                 """, unsafe_allow_html=True)
+            
+            else:
+                st.warning(f"⚠️ Data {map_type} tidak tersedia untuk periode yang dipilih.")
         
-        # Instructions - WARNA HITAM
+        else:
+            st.error("❌ Gagal memuat peta. Silakan coba lagi.")
+        
+        # Instructions
         st.markdown("""
         <div class="instructions">
-            <h4>💡 Cara Menggunakan Peta:</h4>
+            <h4>💡 Cara Menggunakan Peta Interaktif:</h4>
             <ul>
-                <li>📍 <strong>Marker</strong> menunjukkan lokasi kecamatan dengan data bencana</li>
-                <li>🖱️ <strong>Klik marker</strong> untuk melihat detail bencana per kecamatan</li>
-                <li>🎨 <strong>Warna marker:</strong> Hijau = Rendah, Orange = Sedang, Merah = Tinggi</li>
-                <li>🔍 <strong>Zoom</strong> dan geser peta untuk eksplorasi detail</li>
-                <li>📅 <strong>Filter tahun</strong> di sidebar untuk melihat data periode tertentu</li>
+                <li>🎯 <strong>Filter Data:</strong> Pilih jenis data yang ingin ditampilkan di peta</li>
+                <li>📍 <strong>Marker:</strong> Klik marker untuk melihat detail data per kecamatan</li>
+                <li>🎨 <strong>Warna Marker:</strong> 
+                    <br>• Bencana Alam: Hijau=Aman, Kuning=Rendah, Orange=Sedang, Merah=Tinggi
+                    <br>• Bantuan Sosial: Merah=Tidak Ada, Orange=Sedikit, Biru=Sedang, Hijau=Banyak
+                    <br>• KB Performance: Hijau=Pertumbuhan Bagus, Orange=Penurunan, Merah=Penurunan Besar
+                    <br>• Peserta KB: Merah=Tidak Ada, Orange=Sedikit, Biru=Sedang, Hijau=Banyak</li>
+                <li>🔍 <strong>Zoom & Pan:</strong> Gunakan mouse untuk memperbesar dan menggeser peta</li>
+                <li>📅 <strong>Filter Tahun:</strong> Gunakan filter tahun di sidebar untuk data yang sensitif waktu</li>
+                <li>📊 <strong>Statistik:</strong> Lihat ringkasan statistik di bawah peta untuk insight cepat</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -2450,8 +2885,8 @@ def main():
         
         st.markdown("</div>", unsafe_allow_html=True)
         
-                # ===========================
-        # SECTION 3: KEKERASAN - LENGKAP
+        # ===========================
+        # SECTION 3: KEKERASAN - LENGKAP DENGAN SEMUA CHART
         # ===========================
         st.markdown("""
         <div class="section-container">
