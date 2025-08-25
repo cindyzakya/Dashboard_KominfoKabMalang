@@ -320,6 +320,92 @@ with col5:
 
 st.markdown("---")
 
+# Siapkan data fasilitas kesehatan untuk peta dan analisis korelasi
+faskes_df = get_latest_facilities_data(filtered_df)
+
+st.header("🗺️ Peta Sebaran")
+
+all_indicator_options = {
+    "Prevalensi Stunting (%)": "Prevalensi Stunting Persen",
+    "Jumlah Rumah Sakit": "Jumlah Rumah Sakit",
+    "Jumlah Puskesmas": "Jumlah Puskesmas",
+    "Jumlah Puskesmas Pembantu": "Jumlah Puskesmas Pembantu",
+    "Jumlah Klinik": "Jumlah Klinik",
+    "Pos Kesehatan": "Pos Kesehatan",
+    "Jumlah Pondok Bersalin Desa": "Jumlah Pondak Bersalin Desa (Polindes)",
+}
+
+available_indicators = {label: col for label, col in all_indicator_options.items() if col in filtered_df.columns}
+
+selected_indicator_label = st.selectbox("Pilih indikator untuk ditampilkan:", list(available_indicators.keys()))
+selected_indicator = available_indicators[selected_indicator_label]
+
+# Data untuk peta
+if 'latest_year' in locals() and 'latest_month' in locals() and not faskes_df.empty:
+    latest_period_data = filtered_df[
+        (filtered_df['Tahun'] == latest_year) & 
+        (filtered_df['Bulan'] == latest_month)
+    ]
+    prevalence_latest_df = latest_period_data.groupby('Kecamatan').agg({
+        'Prevalensi Stunting Persen': 'mean'
+    }).reset_index()
+
+    map_data_source = pd.merge(faskes_df, prevalence_latest_df, on="Kecamatan", how="left")
+else:
+    map_data_source = pd.DataFrame()
+
+if not map_data_source.empty and selected_indicator in map_data_source.columns:
+    map_display_df = map_data_source[['Kecamatan', selected_indicator]].dropna()
+
+    fig_map = px.choropleth_mapbox(
+        map_display_df,
+        geojson=geojson_kec,
+        locations="Kecamatan",
+        featureidkey="properties.nm_kecamatan",
+        color=selected_indicator,
+        color_continuous_scale="Viridis",
+        mapbox_style="carto-positron",
+        zoom=8,
+        center={"lat": -8.1, "lon": 112.6},
+        opacity=0.7,
+        labels={selected_indicator: selected_indicator_label},
+        hover_name="Kecamatan",
+    )
+
+    # Tentukan format hovertemplate untuk menampilkan nilai dengan benar
+    if "Prevalensi Stunting (%)" in selected_indicator_label:
+        template_value = '%{z:.2f}%'
+    else:
+        template_value = '%{z:,.0f}' # Gunakan koma untuk ribuan pada data non-persen
+
+    fig_map.update_traces(hovertemplate=f'<b>%{{location}}</b><br>{selected_indicator_label}: {template_value}<extra></extra>')
+
+    fig_map.update_layout(
+        margin={"r":0,"t":40,"l":0,"b":0},
+        title=f"Sebaran {selected_indicator_label} per Kecamatan (Data: {latest_month} {latest_year})"
+    )
+    st.plotly_chart(fig_map, use_container_width=True)
+    
+    # Analisis menggunakan fungsi utility
+    max_value = map_display_df[selected_indicator].max()
+    min_value = map_display_df[selected_indicator].min()
+    mean_value = map_display_df[selected_indicator].mean()
+    
+    max_kecamatan = map_display_df[map_display_df[selected_indicator] == max_value]['Kecamatan'].iloc[0]
+    min_kecamatan = map_display_df[map_display_df[selected_indicator] == min_value]['Kecamatan'].iloc[0]
+    
+    above_avg = len(map_display_df[map_display_df[selected_indicator] > mean_value])
+    below_avg = len(map_display_df[map_display_df[selected_indicator] < mean_value])
+    
+    difference_ratio = max_value / min_value if min_value > 0 else float('inf')
+    
+    st.info(create_map_analysis(selected_indicator_label, max_kecamatan, max_value, min_kecamatan, min_value, mean_value, above_avg, below_avg, difference_ratio))
+        
+else:
+    st.warning(f"Data untuk '{selected_indicator_label}' tidak tersedia dengan filter yang dipilih saat ini.")
+
+st.markdown("---")
+
 # =================== ANALISIS TREN YANG LEBIH EFEKTIF ===================
 st.header("📈 Tren Stunting dari Waktu ke Waktu")
 
@@ -856,9 +942,6 @@ else:
     prevalensi_df = filtered_df.groupby('Kecamatan').agg({'Prevalensi Stunting Persen': 'mean'}).reset_index()
     st.info("Analisis menggunakan rata-rata dari seluruh periode yang dipilih.")
 
-# Gunakan fungsi utility untuk mendapatkan data fasilitas
-faskes_df = get_latest_facilities_data(filtered_df)
-
 # Merge data prevalensi dan fasilitas
 analysis_df = pd.merge(prevalensi_df, faskes_df, on='Kecamatan', how='inner')
 
@@ -1025,76 +1108,3 @@ else:
     st.info(f"**Komposisi Stunting**: Dari total {total_stunting_comp:,} kasus stunting, {pct_sangat_pendek:.0f}% ({total_sangat_pendek:,} kasus) termasuk kategori 'Sangat Pendek' yang memerlukan penanganan intensif, sementara {100-pct_sangat_pendek:.0f}% ({total_pendek:,} kasus) masuk kategori 'Pendek' yang dapat ditangani dengan intervensi preventif.")
 
 st.markdown("---")
-
-st.header("🗺️ Peta Sebaran")
-
-all_indicator_options = {
-    "Persentase Stunting": "Prevalensi Stunting Persen",
-    "Jumlah Rumah Sakit": "Jumlah Rumah Sakit",
-    "Jumlah Puskesmas": "Jumlah Puskesmas",
-    "Jumlah Puskesmas Pembantu": "Jumlah Puskesmas Pembantu",
-    "Jumlah Klinik": "Jumlah Klinik",
-    "Pos Kesehatan": "Pos Kesehatan",
-    "Jumlah Pondok Bersalin Desa": "Jumlah Pondak Bersalin Desa (Polindes)",
-}
-
-available_indicators = {label: col for label, col in all_indicator_options.items() if col in filtered_df.columns}
-
-selected_indicator_label = st.selectbox("Pilih indikator untuk ditampilkan:", list(available_indicators.keys()))
-selected_indicator = available_indicators[selected_indicator_label]
-
-# Data untuk peta
-if 'latest_year' in locals() and 'latest_month' in locals() and not faskes_df.empty:
-    latest_period_data = filtered_df[
-        (filtered_df['Tahun'] == latest_year) & 
-        (filtered_df['Bulan'] == latest_month)
-    ]
-    prevalence_latest_df = latest_period_data.groupby('Kecamatan').agg({
-        'Prevalensi Stunting Persen': 'mean'
-    }).reset_index()
-
-    map_data_source = pd.merge(faskes_df, prevalence_latest_df, on="Kecamatan", how="left")
-else:
-    map_data_source = pd.DataFrame()
-
-if not map_data_source.empty and selected_indicator in map_data_source.columns:
-    map_display_df = map_data_source[['Kecamatan', selected_indicator]].dropna()
-
-    fig_map = px.choropleth_mapbox(
-        map_display_df,
-        geojson=geojson_kec,
-        locations="Kecamatan",
-        featureidkey="properties.nm_kecamatan",
-        color=selected_indicator,
-        color_continuous_scale="Viridis",
-        mapbox_style="carto-positron",
-        zoom=8,
-        center={"lat": -8.1, "lon": 112.6},
-        opacity=0.7,
-        labels={selected_indicator: selected_indicator_label},
-        hover_name="Kecamatan",
-        hover_data={selected_indicator: ':.0f'}
-    )
-    fig_map.update_layout(
-        margin={"r":0,"t":40,"l":0,"b":0},
-        title=f"Sebaran {selected_indicator_label} per Kecamatan (Data: {latest_month} {latest_year})"
-    )
-    st.plotly_chart(fig_map, use_container_width=True)
-    
-    # Analisis menggunakan fungsi utility
-    max_value = map_display_df[selected_indicator].max()
-    min_value = map_display_df[selected_indicator].min()
-    mean_value = map_display_df[selected_indicator].mean()
-    
-    max_kecamatan = map_display_df[map_display_df[selected_indicator] == max_value]['Kecamatan'].iloc[0]
-    min_kecamatan = map_display_df[map_display_df[selected_indicator] == min_value]['Kecamatan'].iloc[0]
-    
-    above_avg = len(map_display_df[map_display_df[selected_indicator] > mean_value])
-    below_avg = len(map_display_df[map_display_df[selected_indicator] < mean_value])
-    
-    difference_ratio = max_value / min_value if min_value > 0 else float('inf')
-    
-    st.info(create_map_analysis(selected_indicator_label, max_kecamatan, max_value, min_kecamatan, min_value, mean_value, above_avg, below_avg, difference_ratio))
-        
-else:
-    st.warning(f"Data untuk '{selected_indicator_label}' tidak tersedia dengan filter yang dipilih saat ini.")
