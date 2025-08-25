@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 from datetime import datetime
 import subprocess
 import sys
-import webbrowser
 import socket
 import os
 
@@ -309,10 +308,10 @@ def main():
                     <br><br>
                     <strong>Fitur Utama:</strong><br>
                     • Analisis Data Stunting & Prevalensi<br>
-                    • Pemetaan Fasilitas Kesehatan<br>
-                    • Tren Temporal & Geografis<br>
-                    • Matrix Korelasi & Outlier Detection<br>
-                    • Rekomendasi Strategis Kesehatan
+                    • Analisis Tren Prevalensi <br>
+                    • Analisis Perubahan Prevalensi<br>
+                    • Analisis Korelasi & Komposisi<br>
+                    • Data Fasilitas Kesehatan & Sebaran
                 </div>
             </div>
         </div>

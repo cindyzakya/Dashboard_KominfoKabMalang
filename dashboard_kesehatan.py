@@ -1,3 +1,4 @@
+import json
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -23,39 +24,119 @@ def load_data():
 
 df = load_data()
 
+geojson_kec_path = "data/geo/35.07_kecamatan.geojson"
+with open(geojson_kec_path, 'r', encoding='utf-8') as f:
+    geojson_kec = json.load(f)
+
+# =================== UTILITY FUNCTIONS ===================
+def get_latest_period(df_to_check):
+    """Mencari tahun dan bulan terakhir dari dataframe yang diberikan."""
+    if df_to_check.empty:
+        return None, None
+
+    month_order = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+    
+    latest_year = df_to_check['Tahun'].max()
+    latest_year_data = df_to_check[df_to_check['Tahun'] == latest_year]
+    available_months = latest_year_data['Bulan'].unique()
+
+    latest_month = None
+    for month in reversed(month_order):
+        if month in available_months:
+            latest_month = month
+            break
+    
+    return latest_year, latest_month
+
+
 # =================== SIDEBAR FILTERS ===================
 with st.sidebar:
     st.header("🔍 Filter Data")
     
+    # Initialize filter states if not exists
+    if "reset_filters" not in st.session_state:
+        st.session_state.reset_filters = False
+    if "reset_year_filter" not in st.session_state:
+        st.session_state.reset_year_filter = False
+    if "reset_kecamatan_filter" not in st.session_state:
+        st.session_state.reset_kecamatan_filter = False
+    
     # Filter Tahun
     st.subheader("📅 Tahun")
-    semua_tahun = st.checkbox("Pilih Semua Tahun", value=True)
+    
+    # Set default values based on reset state
+    default_checkbox_tahun = True if st.session_state.reset_filters or st.session_state.reset_year_filter else True
+    default_multiselect_tahun = sorted(df['Tahun'].unique())
+    
+    semua_tahun = st.checkbox("Pilih Semua Tahun", value=default_checkbox_tahun, key="checkbox_tahun")
     
     if semua_tahun:
         selected_year = sorted(df['Tahun'].unique())
         st.info(f"Terpilih: {len(selected_year)} tahun")
+        # Disable multiselect when all years are selected
+        st.multiselect(
+            "Pilih Tahun:",
+            options=sorted(df['Tahun'].unique()),
+            default=sorted(df['Tahun'].unique()),
+            disabled=True,
+            key="multiselect_tahun"
+        )
     else:
         selected_year = st.multiselect(
             "Pilih Tahun:",
             options=sorted(df['Tahun'].unique()),
-            default=sorted(df['Tahun'].unique())
+            default=default_multiselect_tahun,
+            key="multiselect_tahun"
         )
+        # Jika tidak ada tahun yang dipilih, default ke semua tahun
+        if not selected_year:
+            selected_year = sorted(df['Tahun'].unique())
+            st.warning("⚠️ Tidak ada tahun dipilih, menampilkan semua tahun")
+    
+    # Reset flag after rerun
+    if st.session_state.reset_year_filter:
+        st.session_state.reset_year_filter = False
     
     # Filter Kecamatan
     st.subheader("🏘️ Kecamatan")
-    semua_kecamatan = st.checkbox("Pilih Semua Kecamatan", value=False)
+    
+    # Set default values based on reset state
+    default_checkbox_kecamatan = True if st.session_state.reset_filters or st.session_state.reset_kecamatan_filter else True
+    default_multiselect_kecamatan = sorted(df['Kecamatan'].unique())
+    
+    semua_kecamatan = st.checkbox("Pilih Semua Kecamatan", value=default_checkbox_kecamatan, key="checkbox_kecamatan")
     
     if semua_kecamatan:
         selected_kecamatan = sorted(df['Kecamatan'].unique())
         st.info(f"Terpilih: {len(selected_kecamatan)} kecamatan")
+        # Disable multiselect when all kecamatan are selected
+        st.multiselect(
+            "Pilih Kecamatan:",
+            options=sorted(df['Kecamatan'].unique()),
+            default=sorted(df['Kecamatan'].unique()),
+            disabled=True,
+            key="multiselect_kecamatan"
+        )
     else:
         selected_kecamatan = st.multiselect(
             "Pilih Kecamatan:",
             options=sorted(df['Kecamatan'].unique()),
-            default=sorted(df['Kecamatan'].unique())[:10],
-            help="Pilih maksimal 20 kecamatan untuk performa terbaik"
+            default=default_multiselect_kecamatan if st.session_state.reset_filters or st.session_state.reset_kecamatan_filter else sorted(df['Kecamatan'].unique())[:10],
+            key="multiselect_kecamatan"
         )
+        # Jika tidak ada kecamatan yang dipilih, default ke semua kecamatan
+        if not selected_kecamatan:
+            selected_kecamatan = sorted(df['Kecamatan'].unique())
+            st.warning("⚠️ Tidak ada kecamatan dipilih, menampilkan semua kecamatan")
     
+    # Reset flag after rerun
+    if st.session_state.reset_kecamatan_filter:
+        st.session_state.reset_kecamatan_filter = False
+    
+    # Reset flag after rerun
+    if st.session_state.reset_filters:
+        st.session_state.reset_filters = False
 
 # Filter data berdasarkan seleksi
 filtered_df = df[
@@ -72,33 +153,66 @@ if filtered_df.empty:
     st.error("❌ Tidak ada data yang sesuai dengan filter yang dipilih. Silakan ubah filter di sidebar.")
     st.stop()
 
+# Info filter aktif
+col_info1, col_info2 = st.columns(2)
+with col_info1:
+    if len(selected_year) == len(df['Tahun'].unique()):
+        st.info(f"📅 **Filter Tahun**: Semua tahun ({min(selected_year)}-{max(selected_year)})")
+    else:
+        st.info(f"📅 **Filter Tahun**: {len(selected_year)} tahun terpilih ({min(selected_year)}-{max(selected_year)})")
+
+with col_info2:
+    if len(selected_kecamatan) == len(df['Kecamatan'].unique()):
+        st.info(f"🏘️ **Filter Kecamatan**: Semua kecamatan ({len(selected_kecamatan)} kecamatan)")
+    else:
+        st.info(f"🏘️ **Filter Kecamatan**: {len(selected_kecamatan)} kecamatan terpilih")
+
 st.markdown("---")
 
 # =================== METRICS UTAMA ===================
 st.header("📋 Ringkasan Utama")
+
+latest_year, latest_month = get_latest_period(filtered_df)
+
+# Data stunting dari semua periode yang difilter
+total_stunting = filtered_df['Stunting'].sum()
+total_diukur = filtered_df['Jumlah Yang Diukur'].sum()
+avg_prevalensi = filtered_df['Prevalensi Stunting Persen'].mean()
+
+# Data fasilitas dari periode terakhir saja - AMBIL KECAMATAN UNIK SAJA
+if latest_year and latest_month:
+    latest_data = filtered_df[
+        (filtered_df['Tahun'] == latest_year) & 
+        (filtered_df['Bulan'] == latest_month)
+    ].drop_duplicates(subset=['Kecamatan'])
+    total_puskesmas = latest_data['Jumlah Puskesmas'].sum()
+    total_rs = latest_data['Jumlah Rumah Sakit'].sum()
+else:
+    total_puskesmas, total_rs = 0, 0
+
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    total_stunting = filtered_df['Stunting'].sum()
     st.metric("Total Kasus Stunting", f"{total_stunting:,}")
 
 with col2:
-    total_diukur = filtered_df['Jumlah Yang Diukur'].sum()
     st.metric("Total Anak Diukur", f"{total_diukur:,}")
 
 with col3:
-    avg_prevalensi = filtered_df['Prevalensi Stunting Persen'].mean()
     st.metric("Rata-rata Prevalensi", f"{avg_prevalensi:.2f}%")
 
 with col4:
-    total_puskesmas = filtered_df['Jumlah Puskesmas'].sum()
     st.metric("Total Puskesmas", f"{total_puskesmas:,}")
+    if latest_month:
+        st.caption(f"📅 Data per {latest_month} {latest_year}")
 
 with col5:
-    total_rs = filtered_df['Jumlah Rumah Sakit'].sum()
     st.metric("Total Rumah Sakit", f"{total_rs:,}")
+    if latest_month:
+        st.caption(f"📅 Data per {latest_month} {latest_year}")
 
 st.markdown("---")
+
 
 # =================== ANALISIS TREN TEMPORAL (FULL WIDTH) ===================
 st.header("📈 Analisis Tren Temporal")
@@ -209,12 +323,6 @@ elif trend_option == "📅 Tren per Periode":
 elif trend_option == "🏘️ Tren per Tahun (per Kecamatan)":
     yearly_kec_trend = filtered_df.groupby(['Kecamatan', 'Tahun'])['Prevalensi Stunting Persen'].mean().reset_index()
     
-    # Limit kecamatan jika terlalu banyak
-    if len(selected_kecamatan) > 25:
-        st.warning(f"⚠️ Menampilkan 25 kecamatan dengan prevalensi tertinggi dari {len(selected_kecamatan)} kecamatan terpilih untuk performa optimal")
-        top_kecamatan = yearly_kec_trend.groupby('Kecamatan')['Prevalensi Stunting Persen'].mean().sort_values(ascending=False).head(25).index
-        yearly_kec_trend = yearly_kec_trend[yearly_kec_trend['Kecamatan'].isin(top_kecamatan)]
-    
     fig_trend = px.line(
         yearly_kec_trend,
         x='Tahun',
@@ -249,12 +357,6 @@ else:  # "📍 Tren per Periode (per Kecamatan)"
         filtered_df['Periode'] = filtered_df['Tahun'].astype(str) + '-' + filtered_df['Bulan']
         
     period_kec_trend = filtered_df.groupby(['Kecamatan', 'Periode'])['Prevalensi Stunting Persen'].mean().reset_index()
-    
-    # Limit kecamatan untuk performa
-    if len(selected_kecamatan) > 20:
-        st.warning(f"⚠️ Menampilkan 20 kecamatan dengan prevalensi tertinggi dari {len(selected_kecamatan)} kecamatan terpilih untuk performa optimal")
-        top_kecamatan = period_kec_trend.groupby('Kecamatan')['Prevalensi Stunting Persen'].mean().sort_values(ascending=False).head(20).index
-        period_kec_trend = period_kec_trend[period_kec_trend['Kecamatan'].isin(top_kecamatan)]
     
     fig_trend = px.line(
         period_kec_trend,
@@ -292,11 +394,22 @@ st.markdown("---")
 
 st.header("🗺️ Distribusi Prevalensi Stunting")
 
+# Data untuk distribusi diambil dari periode terakhir untuk konsistensi dengan peta dan korelasi
+if 'latest_year' in locals() and 'latest_month' in locals() and latest_month is not None:
+    distribution_df = filtered_df[
+        (filtered_df['Tahun'] == latest_year) & 
+        (filtered_df['Bulan'] == latest_month)
+    ]
+    st.info(f"Data distribusi ditampilkan berdasarkan periode terakhir yang tersedia: **{latest_month} {latest_year}**")
+else:
+    distribution_df = filtered_df # Fallback jika periode terakhir tidak ditemukan
+    st.info("Data distribusi ditampilkan berdasarkan rata-rata dari seluruh periode terfilter.")
+
 col1, col2 = st.columns(2)
 
 with col1:
     # Kecamatan dengan prevalensi tertinggi
-    top_kecamatan = filtered_df.groupby('Kecamatan').agg({
+    top_kecamatan = distribution_df.groupby('Kecamatan').agg({
         'Prevalensi Stunting Persen': 'mean',
         'Stunting': 'sum'
     }).reset_index().sort_values('Prevalensi Stunting Persen', ascending=False).head(10)
@@ -305,7 +418,7 @@ with col1:
         top_kecamatan,
         x='Prevalensi Stunting Persen',
         y='Kecamatan',
-        title='Top 10 Kecamatan dengan Prevalensi Stunting Tertinggi',
+        title='Top 10 Prevalensi Stunting Tertinggi',
         orientation='h',
         color='Prevalensi Stunting Persen',
         color_continuous_scale='Reds',
@@ -316,7 +429,7 @@ with col1:
     st.plotly_chart(fig_top, use_container_width=True)
 
 with col2:
-    bottom_kecamatan = filtered_df.groupby('Kecamatan').agg({
+    bottom_kecamatan = distribution_df.groupby('Kecamatan').agg({
         'Prevalensi Stunting Persen': 'mean',
         'Stunting': 'sum'
     }).reset_index().sort_values('Prevalensi Stunting Persen', ascending=True).head(10)
@@ -325,7 +438,7 @@ with col2:
         bottom_kecamatan,
         x='Prevalensi Stunting Persen',
         y='Kecamatan',
-        title='Top 10 Kecamatan dengan Prevalensi Stunting Terendah',
+        title='Top 10 Prevalensi Stunting Terendah',
         orientation='h',
         color='Prevalensi Stunting Persen',
         color_continuous_scale='Blues',
@@ -335,7 +448,7 @@ with col2:
     fig_bottom.update_layout(height=500)
     st.plotly_chart(fig_bottom, use_container_width=True)
 
-avg_prevalensi_kecamatan = filtered_df.groupby('Kecamatan')['Prevalensi Stunting Persen'].mean().reset_index()
+avg_prevalensi_kecamatan = distribution_df.groupby('Kecamatan')['Prevalensi Stunting Persen'].mean().reset_index()
 
 def classify_prevalensi(prevalensi):
     if prevalensi < 5:
@@ -480,9 +593,6 @@ if filtered_df['Tahun'].nunique() > 1:
                 st.markdown("**⚠️ Kecamatan Membutuhkan Perhatian Khusus:**")
                 for _, row in top_worsen.iterrows():
                     st.error(f"**{row['Kecamatan']}**: Naik {row['Perubahan']:.1f}% ({row['Perubahan_Persen']:.1f}%)")
-                
-    
-
     else:
         st.info("Data tidak cukup untuk menghitung perubahan (perlu data di minimal 2 tahun untuk kecamatan yang sama).")
 else:
@@ -493,302 +603,270 @@ st.markdown("---")
 # =================== ANALISIS KORELASI & KOMPOSISI ===================
 st.header("🔬 Analisis Korelasi & Komposisi")
 
-col1, col2 = st.columns(2)
+# ========== ANALISIS KORELASI (FULL WIDTH) ==========
+# Definisikan urutan bulan
+month_order = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+               'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
 
-with col1:
-    facility_cols = {
-        'Jumlah Rumah Sakit': 'Rumah Sakit',
-        'Jumlah Puskesmas': 'Puskesmas',
-        'Jumlah Puskesmas Pembantu': 'Puskesmas Pembantu',
-        'Jumlah Klinik': 'Klinik',
-        'Pos Kesehatan': 'Pos Kesehatan'
-    }
-    comparison_data = []
-
-    analysis_df = filtered_df.groupby(['Kecamatan', 'Tahun']).agg({
-        'Prevalensi Stunting Persen': 'mean',
-        **{col: 'mean' for col in facility_cols.keys()}
+if 'latest_year' in locals() and 'latest_month' in locals() and latest_month is not None:
+    # Data prevalensi: ambil dari periode terakhir untuk konsistensi
+    latest_period_data_for_corr = filtered_df[
+        (filtered_df['Tahun'] == latest_year) & 
+        (filtered_df['Bulan'] == latest_month)
+    ]
+    prevalensi_df = latest_period_data_for_corr.groupby('Kecamatan').agg({
+        'Prevalensi Stunting Persen': 'mean'
     }).reset_index()
+    st.info(f"Analisis korelasi menggunakan data dari periode: **{latest_month} {latest_year}**")
+else:
+    # Fallback jika periode terakhir tidak bisa ditentukan
+    prevalensi_df = filtered_df.groupby('Kecamatan').agg({'Prevalensi Stunting Persen': 'mean'}).reset_index()
+    st.info("Analisis korelasi menggunakan data rata-rata dari seluruh periode terfilter.")
 
-    if not analysis_df.empty and len(analysis_df) > 1:
-        for col, name in facility_cols.items():
-            if analysis_df[col].nunique() <= 1:
-                continue
-            
-            threshold = analysis_df[col].median()
-            if threshold == 0:
-                threshold = analysis_df[col].mean()
-            if threshold == 0:
-                continue
+# Data fasilitas: ambil dari periode terakhir yang ada di data terfilter
+def get_latest_facilities_data(data):
+    if data.empty:
+        return pd.DataFrame()
 
-            analysis_df['Kategori Faskes'] = np.where(analysis_df[col] > threshold, 'Jumlah Faskes Tinggi', 'Jumlah Faskes Rendah')
-            avg_prevalence = analysis_df.groupby('Kategori Faskes')['Prevalensi Stunting Persen'].mean().reset_index()
-            avg_prevalence['Tipe Faskes'] = name
-            comparison_data.append(avg_prevalence)
+    latest_year = data['Tahun'].max()
+    latest_year_data = data[data['Tahun'] == latest_year]
+    
+    latest_month = None
+    for month in reversed(month_order):
+        if month in latest_year_data['Bulan'].unique():
+            latest_month = month
+            break
+    
+    if not latest_month:
+        return pd.DataFrame()
 
-        if comparison_data:
-            final_comparison_df = pd.concat(comparison_data, ignore_index=True)
-            fig_faskes_comp = px.bar(
-                final_comparison_df,
-                x='Tipe Faskes',
-                y='Prevalensi Stunting Persen',
-                color='Kategori Faskes',
-                barmode='group',
-                title='Prevalensi Stunting: Faskes Banyak vs Sedikit',
-                labels={'Prevalensi Stunting Persen': 'Prevalensi (%)', 'Tipe Faskes': 'Tipe Fasilitas', 'Kategori Faskes': 'Kategori'},
-                color_discrete_map={'Jumlah Faskes Rendah': '#FF6B6B', 'Jumlah Faskes Tinggi': '#4ECDC4'},
-                text='Prevalensi Stunting Persen'
-            )
-            fig_faskes_comp.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-            fig_faskes_comp.update_layout(height=500)
-            st.plotly_chart(fig_faskes_comp, use_container_width=True)
+    latest_period_df = latest_year_data[latest_year_data['Bulan'] == latest_month]
 
-            # --- ANALISIS ANOMALI ---
-            anomalies_df = final_comparison_df.pivot(index='Tipe Faskes', columns='Kategori Faskes', values='Prevalensi Stunting Persen').reset_index()
-            if 'Jumlah Faskes Tinggi' in anomalies_df.columns and 'Jumlah Faskes Rendah' in anomalies_df.columns:
-                anomalies_df = anomalies_df.dropna()
-                anomalous_faskes = anomalies_df[anomalies_df['Jumlah Faskes Tinggi'] > anomalies_df['Jumlah Faskes Rendah']]
+    # Kolom yang dihitung per kecamatan (ambil nilai unik)
+    per_kecamatan_cols = ['Jumlah Rumah Sakit', 'Jumlah Puskesmas', 'Jumlah Puskesmas Pembantu']
+    # Kolom yang dihitung per unit kerja (dijumlahkan)
+    per_unit_kerja_cols = ['Jumlah Klinik', 'Pos Kesehatan', 'Jumlah Pondak Bersalin Desa (Polindes)']
 
-                # if not anomalous_faskes.empty:
-                #     with st.expander("⚠️ Klik untuk Melihat Detail Kecamatan dengan Anomali"):
-                #         st.warning("""
-                #         **Anomali Terdeteksi!** Ditemukan kasus dimana daerah dengan jumlah fasilitas kesehatan lebih banyak 
-                #         justru memiliki rata-rata prevalensi stunting yang lebih tinggi. Ini bisa menunjukkan:
-                #         - Konsentrasi fasilitas kesehatan di daerah dengan masalah stunting yang lebih besar
-                #         - Kebutuhan intervensi yang lebih komprehensif selain penambahan fasilitas
-                #         """)
-                        
-                #         reverse_facility_cols = {v: k for k, v in facility_cols.items()}
+    # Filter kolom yang benar-benar ada di dataframe
+    per_kecamatan_cols = [col for col in per_kecamatan_cols if col in latest_period_df.columns]
+    per_unit_kerja_cols = [col for col in per_unit_kerja_cols if col in latest_period_df.columns]
 
-                #         for faskes_name in anomalous_faskes['Tipe Faskes']:
-                #             st.markdown(f"---")
-                #             st.markdown(f"**Kecamatan Penyumbang Anomali untuk '{faskes_name}':**")
-                            
-                #             col_name = reverse_facility_cols.get(faskes_name)
-                #             if not col_name: continue
+    # Proses faskes per kecamatan
+    faskes_kec_df = latest_period_df[['Kecamatan'] + per_kecamatan_cols].drop_duplicates(subset=['Kecamatan']).reset_index(drop=True)
 
-                #             threshold = analysis_df[col_name].median()
-                #             if threshold == 0: threshold = analysis_df[col_name].mean()
+    # Proses faskes per unit kerja
+    faskes_unit_df = latest_period_df.groupby('Kecamatan')[per_unit_kerja_cols].sum().reset_index()
 
-                #             anomalous_districts = analysis_df[analysis_df[col_name] > threshold].sort_values('Prevalensi Stunting Persen', ascending=False)
+    # Gabungkan keduanya
+    final_faskes_df = pd.merge(faskes_kec_df, faskes_unit_df, on='Kecamatan', how='outer').fillna(0)
+    return final_faskes_df
 
-                #             for _, row in anomalous_districts.head(3).iterrows():
-                #                 st.write(f"- **{row['Kecamatan']}**: Prevalensi {row['Prevalensi Stunting Persen']:.2f}% (dengan {int(row[col_name])} {faskes_name})")
-        else:
-            st.info("Data tidak cukup untuk menampilkan perbandingan fasilitas kesehatan.")
-    else:
-        st.info("Data tidak cukup untuk menampilkan perbandingan fasilitas kesehatan.")
+faskes_df = get_latest_facilities_data(filtered_df)
 
-with col2:
-    # Komposisi Stunting (Pendek vs Sangat Pendek)
-    composition_df = filtered_df.groupby('Tahun').agg({
-        'Pendek': 'sum',
-        'Sangat Pendek': 'sum'
-    }).reset_index()
+# Merge data prevalensi dan fasilitas
+analysis_df = pd.merge(prevalensi_df, faskes_df, on='Kecamatan', how='inner')
 
-    fig_comp = go.Figure()
-    fig_comp.add_trace(go.Bar(
-        x=composition_df['Tahun'], 
-        y=composition_df['Pendek'], 
-        name='Pendek',
-        text=composition_df['Pendek'],
-        textposition='inside'
-    ))
-    fig_comp.add_trace(go.Bar(
-        x=composition_df['Tahun'], 
-        y=composition_df['Sangat Pendek'], 
-        name='Sangat Pendek',
-        text=composition_df['Sangat Pendek'],
-        textposition='inside'
-    ))
-    fig_comp.update_layout(
-        barmode='stack', 
-        title='Komposisi Kasus Stunting (Pendek vs Sangat Pendek)', 
-        xaxis_title='Tahun', 
-        yaxis_title='Jumlah Kasus', 
-        height=500
+if not analysis_df.empty and len(analysis_df) > 1:
+    # Hitung total fasilitas kesehatan per kecamatan
+    facility_cols = [col for col in faskes_df.columns if col != 'Kecamatan']
+    analysis_df['Total Faskes'] = analysis_df[facility_cols].sum(axis=1)
+
+    # TAMPILKAN SEMUA KECAMATAN YANG DIPILIH USER (bukan top 15)
+    # Urutkan berdasarkan prevalensi dari tinggi ke rendah
+    display_kecamatan = analysis_df.sort_values('Prevalensi Stunting Persen', ascending=False)
+
+    # Reshape data untuk visualisasi side-by-side
+    plot_data = []
+    for _, row in display_kecamatan.iterrows():
+        plot_data.append({
+            'Kecamatan': row['Kecamatan'],
+            'Metrik': 'Prevalensi Stunting (%)',
+            'Nilai': row['Prevalensi Stunting Persen']
+        })
+        plot_data.append({
+            'Kecamatan': row['Kecamatan'],
+            'Metrik': 'Total Fasilitas',
+            'Nilai': row['Total Faskes']
+        })
+    
+    plot_df = pd.DataFrame(plot_data)
+    
+    # Buat grafik side-by-side per kecamatan
+    fig_faskes_comp = px.bar(
+        plot_df,
+        x='Kecamatan',
+        y='Nilai',
+        color='Metrik',
+        barmode='group',
+        title=f'Prevalensi Stunting vs Jumlah Fasilitas Kesehatan - {len(display_kecamatan)} Kecamatan ({latest_month} {latest_year})',
+        text='Nilai',
+        color_discrete_map={
+            'Prevalensi Stunting (%)': '#FF6B6B',
+            'Total Fasilitas': '#4ECDC4'
+        }
     )
-    st.plotly_chart(fig_comp, use_container_width=True)
-
-
-# # =================== HIGHLIGHT KECAMATAN PRIORITAS ===================
-# st.header("🚨 Highlight Kecamatan Prioritas")
-
-# # Menambahkan sub-judul dinamis untuk konfirmasi bahwa filter diterapkan
-# kecamatan_info = f"{len(selected_kecamatan)} kecamatan terpilih"
-# if semua_kecamatan:
-#     kecamatan_info = "semua kecamatan"
-
-# tahun_info = f"tahun {', '.join(map(str, selected_year))}"
-# if semua_tahun:
-#     tahun_info = "semua tahun"
-
-# st.markdown(f"<i>Analisis prioritas ini dihitung berdasarkan data gabungan dari <b>{tahun_info}</b> untuk <b>{kecamatan_info}</b>.</i>", unsafe_allow_html=True)
-
-# with st.expander("ℹ️ Klik untuk melihat metodologi perhitungan prioritas"):
-#     st.markdown("""
-#     - **Data Agregat**: Data dari tahun dan kecamatan yang Anda filter digabungkan untuk setiap kecamatan.
-#         - `Prevalensi Stunting Persen` dihitung sebagai **rata-rata (mean)** dari semua periode yang difilter.
-#         - `Jumlah Yang Diukur` dan `Stunting` dihitung sebagai **jumlah total (sum)** dari semua periode yang difilter.
-#     - **Threshold Dinamis**: Kategori prioritas ditentukan oleh perbandingan dengan nilai-nilai berikut:
-#         - **Prevalensi**: Dibandingkan dengan nilai tetap (e.g., > 20%).
-#         - **Jumlah Diukur**: Dibandingkan dengan *persentil ke-75* dari **data yang sedang ditampilkan**. Artinya, ambang batas ini berubah tergantung filter Anda.
-#         - **Jumlah Kasus Stunting**: Dibandingkan dengan *median* dari **data yang sedang ditampilkan**. Ambang batas ini juga dinamis.
-#     - **Tujuan**: Pendekatan ini membantu mengidentifikasi kecamatan yang paling menonjol (baik atau buruk) *relatif terhadap kelompok yang sedang Anda analisis*.
-#     """)
-
-# priority_df = filtered_df.groupby('Kecamatan').agg({
-#     'Prevalensi Stunting Persen': 'mean',
-#     'Jumlah Yang Diukur': 'sum',
-#     'Stunting': 'sum'
-# }).reset_index()
-
-# # Definisi yang lebih jelas untuk kategori prioritas
-# threshold_diukur = priority_df['Jumlah Yang Diukur'].quantile(0.75)  # 75th percentile
-# median_stunting = priority_df['Stunting'].median()
-
-# def categorize_priority(row):
-#     prevalensi = row['Prevalensi Stunting Persen']
-#     jumlah_diukur = row['Jumlah Yang Diukur']
-#     stunting = row['Stunting']
     
-#     if prevalensi > 20 and jumlah_diukur > threshold_diukur:
-#         return "🚨 Prioritas Tinggi"
-#     elif prevalensi < 10 and stunting > median_stunting:
-#         return "⚠️ Risiko Tersembunyi"
-#     elif prevalensi > 15:
-#         return "📍 Perlu Perhatian"
-#     else:
-#         return "✅ Kondisi Baik"
-
-# priority_df['Kategori'] = priority_df.apply(categorize_priority, axis=1)
-
-# # Penjelasan kategori
-# st.info("""
-# **Penjelasan Kategori:**
-# - 🚨 **Prioritas Tinggi**: Prevalensi > 20% DAN jumlah anak yang diukur tinggi (perlu intervensi segera)
-# - ⚠️ **Risiko Tersembunyi**: Prevalensi rendah (< 10%) TAPI jumlah kasus stunting tinggi (bisa jadi underreporting atau populasi besar)
-# - 📍 **Perlu Perhatian**: Prevalensi > 15% (monitoring ketat diperlukan)
-# - ✅ **Kondisi Baik**: Prevalensi rendah dengan kasus yang terkendali
-# """)
-
-# st.subheader("📌 Daftar Kecamatan Berdasarkan Kategori Prioritas")
-# priority_table = priority_df[priority_df['Kategori'] != "✅ Kondisi Baik"].sort_values('Prevalensi Stunting Persen', ascending=False)
-
-# if not priority_table.empty:
-#     st.dataframe(
-#         priority_table[['Kecamatan', 'Prevalensi Stunting Persen', 'Jumlah Yang Diukur', 'Stunting', 'Kategori']],
-#         column_config={
-#             'Prevalensi Stunting Persen': st.column_config.NumberColumn(
-#                 'Prevalensi (%)',
-#                 format='%.2f%%'
-#             ),
-#             'Jumlah Yang Diukur': st.column_config.NumberColumn(
-#                 'Jumlah Diukur',
-#                 format='%d'
-#             ),
-#             'Stunting': st.column_config.NumberColumn(
-#                 'Kasus Stunting',
-#                 format='%d'
-#             )
-#         }
-#     )
-# else:
-#     st.success("Semua kecamatan dalam kondisi baik!")
-
-# # =================== QUADRANT ANALYSIS ===================
-# st.subheader("🗺️ Analisis Kuadran Prioritas")
-# st.markdown("""
-# Analisis kuadran ini memetakan kecamatan berdasarkan dua metrik utama: **Rata-rata Prevalensi Stunting** (sumbu x) dan **Total Anak yang Diukur** (sumbu y). Ukuran titik merepresentasikan **Total Kasus Stunting**.
-# - **Kuadran Kanan Atas (Prioritas Tinggi)**: Prevalensi tinggi dan banyak anak diukur. Membutuhkan intervensi segera.
-# - **Kuadran Kiri Atas (Risiko Tersembunyi)**: Prevalensi rendah, namun jumlah anak yang diukur banyak. Kasus stunting absolut bisa jadi tinggi.
-# - **Kuadran Kanan Bawah (Perlu Perhatian)**: Prevalensi tinggi, namun jumlah anak yang diukur sedikit. Mungkin ada *under-reporting*.
-# - **Kuadran Kiri Bawah (Kondisi Baik)**: Prevalensi rendah dan jumlah kasus terkendali.
-# """)
-
-# if not priority_df.empty:
-#     # Thresholds for quadrant lines
-#     threshold_prevalensi = 20  # Sesuai definisi "Prioritas Tinggi"
-#     threshold_diukur = priority_df['Jumlah Yang Diukur'].quantile(0.75) # Sesuai definisi
-
-#     fig_quadrant = px.scatter(
-#         priority_df,
-#         x="Prevalensi Stunting Persen",
-#         y="Jumlah Yang Diukur",
-#         color="Kategori",
-#         size="Stunting",
-#         hover_name="Kecamatan",
-#         hover_data={
-#             'Prevalensi Stunting Persen': ':.2f%',
-#             'Jumlah Yang Diukur': ':,',
-#             'Stunting': ':,'
-#         },
-#         color_discrete_map={
-#             "🚨 Prioritas Tinggi": "#d62728", # red
-#             "⚠️ Risiko Tersembunyi": "#ff7f0e", # orange
-#             "📍 Perlu Perhatian": "#ffbb78", # light orange
-#             "✅ Kondisi Baik": "#2ca02c" # green
-#         },
-#         size_max=60
-#     )
-
-#     # Add quadrant lines
-#     fig_quadrant.add_vline(x=threshold_prevalensi, line_width=2, line_dash="dash", line_color="grey")
-#     fig_quadrant.add_hline(y=threshold_diukur, line_width=2, line_dash="dash", line_color="grey")
-
-#     fig_quadrant.update_layout(
-#         title="Analisis Kuadran Prioritas Kecamatan",
-#         xaxis_title="Rata-rata Prevalensi Stunting (%)",
-#         yaxis_title="Total Anak Diukur",
-#         legend_title="Kategori Prioritas",
-#         height=600
-#     )
+    fig_faskes_comp.update_traces(texttemplate='%{text:.1f}', textposition='outside')
+    fig_faskes_comp.update_layout(
+        height=600,  # Tinggi lebih besar untuk banyak kecamatan
+        yaxis_title='Nilai',
+        xaxis_title='Kecamatan',
+        xaxis={'tickangle': 45}
+    )
     
-#     st.plotly_chart(fig_quadrant, use_container_width=True)
-# else:
-#     st.info("Tidak ada data untuk ditampilkan di analisis kuadran.")
+    st.plotly_chart(fig_faskes_comp, use_container_width=True)
 
-# # =================== RANKING PERUBAHAN ===================
-# st.header("📉📈 Ranking Perubahan Prevalensi (2020 → 2024)")
 
-# if filtered_df['Tahun'].nunique() > 1:
-#     perubahan_df = filtered_df.groupby(['Kecamatan', 'Tahun'])['Prevalensi Stunting Persen'].mean().reset_index()
-#     tahun_awal, tahun_akhir = perubahan_df['Tahun'].min(), perubahan_df['Tahun'].max()
-
-#     perubahan_pivot = perubahan_df.pivot(index='Kecamatan', columns='Tahun', values='Prevalensi Stunting Persen').reset_index()
-#     perubahan_pivot = perubahan_pivot.dropna()  # Hanya kecamatan yang ada di kedua tahun
+        # ========== ANALISIS KORELASI & INSIGHT ==========
+    correlation = analysis_df['Prevalensi Stunting Persen'].corr(analysis_df['Total Faskes'])
     
-#     if len(perubahan_pivot.columns) >= 3:  # Kecamatan + minimal 2 tahun
-#         perubahan_pivot['Perubahan'] = perubahan_pivot[tahun_akhir] - perubahan_pivot[tahun_awal]
-#         perubahan_pivot['Perubahan_Persen'] = (perubahan_pivot['Perubahan'] / perubahan_pivot[tahun_awal]) * 100
+    # Identifikasi kecamatan untuk metrics
+    faskes_rendah_prev_tinggi = analysis_df[
+        (analysis_df['Total Faskes'] <= analysis_df['Total Faskes'].quantile(0.3)) & 
+        (analysis_df['Prevalensi Stunting Persen'] >= analysis_df['Prevalensi Stunting Persen'].quantile(0.7))
+    ].sort_values('Prevalensi Stunting Persen', ascending=False)
+        
+    faskes_tinggi_prev_rendah = analysis_df[
+        (analysis_df['Total Faskes'] >= analysis_df['Total Faskes'].quantile(0.7)) & 
+        (analysis_df['Prevalensi Stunting Persen'] <= analysis_df['Prevalensi Stunting Persen'].quantile(0.3))
+    ].sort_values('Prevalensi Stunting Persen')
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if correlation < -0.5:
+            delta_text = "Negatif Kuat"
+        elif correlation < -0.3:
+            delta_text = "Negatif Sedang"
+        elif correlation > 0.5:
+            delta_text = "Positif Kuat"
+        elif correlation > 0.3:
+            delta_text = "Positif Sedang"
+        else:
+            delta_text = "Tidak Signifikan"
+        st.metric("Koefisien Korelasi", f"{correlation:.3f}", delta=delta_text)
+    
+    with col2:
+        # Best Performer
+        if not faskes_tinggi_prev_rendah.empty:
+            best_kecamatan = faskes_tinggi_prev_rendah.iloc[0]['Kecamatan']
+            best_prevalensi = faskes_tinggi_prev_rendah.iloc[0]['Prevalensi Stunting Persen']
+            best_faskes = faskes_tinggi_prev_rendah.iloc[0]['Total Faskes']
+            delta_text = f"{best_faskes:.0f} faskes, {best_prevalensi:.1f}% stunting"
+        else:
+            # Fallback: kecamatan dengan prevalensi terendah
+            best_row = analysis_df.nsmallest(1, 'Prevalensi Stunting Persen').iloc[0]
+            best_kecamatan = best_row['Kecamatan']
+            delta_text = f"{best_row['Total Faskes']:.0f} faskes, {best_row['Prevalensi Stunting Persen']:.1f}% stunting"
+        
+        st.metric("Best Performer", best_kecamatan, delta=delta_text)
+    
+    with col3:
+        # Needs Attention
+        if not faskes_rendah_prev_tinggi.empty:
+            needs_attention_kecamatan = faskes_rendah_prev_tinggi.iloc[0]['Kecamatan']
+            needs_prevalensi = faskes_rendah_prev_tinggi.iloc[0]['Prevalensi Stunting Persen']
+            needs_faskes = faskes_rendah_prev_tinggi.iloc[0]['Total Faskes']
+            delta_text = f"{needs_faskes:.0f} faskes, {needs_prevalensi:.1f}% stunting"
+        else:
+            # Fallback: kecamatan dengan prevalensi tertinggi
+            needs_row = analysis_df.nlargest(1, 'Prevalensi Stunting Persen').iloc[0]
+            needs_attention_kecamatan = needs_row['Kecamatan']
+            delta_text = f"{needs_row['Total Faskes']:.0f} faskes, {needs_row['Prevalensi Stunting Persen']:.1f}% stunting"
+        
+        st.metric("Needs Attention", needs_attention_kecamatan, delta=delta_text)
 
-#         top_improve = perubahan_pivot.sort_values('Perubahan').head(10)  # penurunan terbesar
-#         top_worsen = perubahan_pivot.sort_values('Perubahan', ascending=False).head(10)  # kenaikan terbesar
+st.markdown("---")
 
-#         col1, col2 = st.columns(2)
-#         with col1:
-#             st.subheader(f"✅ Top 10 Perbaikan Terbesar ({tahun_awal} → {tahun_akhir})")
-#             improve_display = top_improve[['Kecamatan', tahun_awal, tahun_akhir, 'Perubahan', 'Perubahan_Persen']].copy()
-#             improve_display.columns = ['Kecamatan', f'{tahun_awal} (%)', f'{tahun_akhir} (%)', 'Selisih (%)', 'Perubahan (%)']
-#             st.dataframe(improve_display, column_config={
-#                 f'{tahun_awal} (%)': st.column_config.NumberColumn(format='%.2f'),
-#                 f'{tahun_akhir} (%)': st.column_config.NumberColumn(format='%.2f'),
-#                 'Selisih (%)': st.column_config.NumberColumn(format='%.2f'),
-#                 'Perubahan (%)': st.column_config.NumberColumn(format='%.1f')
-#             })
-            
-#         with col2:
-#             st.subheader(f"❌ Top 10 Memburuk Terbesar ({tahun_awal} → {tahun_akhir})")
-#             worsen_display = top_worsen[['Kecamatan', tahun_awal, tahun_akhir, 'Perubahan', 'Perubahan_Persen']].copy()
-#             worsen_display.columns = ['Kecamatan', f'{tahun_awal} (%)', f'{tahun_akhir} (%)', 'Selisih (%)', 'Perubahan (%)']
-#             st.dataframe(worsen_display, column_config={
-#                 f'{tahun_awal} (%)': st.column_config.NumberColumn(format='%.2f'),
-#                 f'{tahun_akhir} (%)': st.column_config.NumberColumn(format='%.2f'),
-#                 'Selisih (%)': st.column_config.NumberColumn(format='%.2f'),
-#                 'Perubahan (%)': st.column_config.NumberColumn(format='%.1f')
-#             })
-#     else:
-#         st.info("Data tidak cukup untuk menghitung perubahan (perlu data di minimal 2 tahun untuk kecamatan yang sama).")
-# else:
-#     st.info("Data hanya 1 tahun, tidak bisa menghitung perubahan.")
+# ========== KOMPOSISI STUNTING (FULL WIDTH) ==========
+st.subheader("📊 Komposisi Kasus Stunting")
 
+# Komposisi Stunting (Pendek vs Sangat Pendek) - logika tidak diubah
+composition_df = filtered_df.groupby('Tahun').agg({
+    'Pendek': 'sum',
+    'Sangat Pendek': 'sum'
+}).reset_index()
+
+fig_comp = go.Figure()
+fig_comp.add_trace(go.Bar(
+    x=composition_df['Tahun'], 
+    y=composition_df['Pendek'], 
+    name='Pendek',
+    text=composition_df['Pendek'],
+    textposition='inside'
+))
+fig_comp.add_trace(go.Bar(
+    x=composition_df['Tahun'], 
+    y=composition_df['Sangat Pendek'], 
+    name='Sangat Pendek',
+    text=composition_df['Sangat Pendek'],
+    textposition='inside'
+))
+fig_comp.update_layout(
+    barmode='stack', 
+    title='Komposisi Kasus Stunting (Pendek vs Sangat Pendek)', 
+    xaxis_title='Tahun', 
+    yaxis_title='Jumlah Kasus', 
+    height=500
+)
+st.plotly_chart(fig_comp, use_container_width=True)
+st.markdown("---")
+st.header("🗺️ Peta Sebaran Indikator")
+
+all_indicator_options = {
+    "Prevalensi Stunting (%)": "Prevalensi Stunting Persen",
+    "Jumlah Rumah Sakit": "Jumlah Rumah Sakit",
+    "Jumlah Puskesmas": "Jumlah Puskesmas",
+    "Jumlah Puskesmas Pembantu": "Jumlah Puskesmas Pembantu",
+    "Jumlah Klinik": "Jumlah Klinik",
+    "Pos Kesehatan": "Pos Kesehatan",
+    "Jumlah Pondak Bersalin Desa (Polindes)": "Jumlah Pondak Bersalin Desa (Polindes)",
+}
+
+available_indicators = {label: col for label, col in all_indicator_options.items() if col in filtered_df.columns}
+
+selected_indicator_label = st.selectbox("Pilih Indikator Peta", list(available_indicators.keys()))
+selected_indicator = available_indicators[selected_indicator_label]
+
+# Data untuk peta diambil HANYA dari periode terakhir yang tersedia dalam filter
+# untuk memastikan semua indikator (faskes dan prevalensi) konsisten.
+if 'latest_year' in locals() and 'latest_month' in locals() and not faskes_df.empty:
+    latest_period_data = filtered_df[
+        (filtered_df['Tahun'] == latest_year) & 
+        (filtered_df['Bulan'] == latest_month)
+    ]
+    prevalence_latest_df = latest_period_data.groupby('Kecamatan').agg({
+        'Prevalensi Stunting Persen': 'mean'
+    }).reset_index()
+
+    # Gabungkan data faskes terbaru dengan data prevalensi terbaru
+    map_data_source = pd.merge(faskes_df, prevalence_latest_df, on="Kecamatan", how="left")
+else:
+    map_data_source = pd.DataFrame() # Kosongkan jika data tidak cukup
+
+if not map_data_source.empty and selected_indicator in map_data_source.columns:
+    # Pastikan tidak ada nilai NaN yang bisa menyebabkan error
+    map_display_df = map_data_source[['Kecamatan', selected_indicator]].dropna()
+
+    fig_map = px.choropleth_mapbox(
+        map_display_df,
+        geojson=geojson_kec,
+        locations="Kecamatan",
+        featureidkey="properties.nm_kecamatan",
+        color=selected_indicator,
+        color_continuous_scale="Viridis",
+        mapbox_style="carto-positron",
+        zoom=8,
+        center={"lat": -8.1, "lon": 112.6},
+        opacity=0.7,
+        labels={selected_indicator: selected_indicator_label},
+        hover_name="Kecamatan",
+        hover_data={selected_indicator: ':.0f'} # Tampilkan sebagai angka bulat
+    )
+    fig_map.update_layout(
+        margin={"r":0,"t":40,"l":0,"b":0},
+        title=f"Peta Sebaran {selected_indicator_label} per Kecamatan (Data per {latest_month} {latest_year})"
+    )
+    st.plotly_chart(fig_map, use_container_width=True)
+else:
+    st.warning(f"Data untuk indikator '{selected_indicator_label}' tidak tersedia untuk ditampilkan di peta dengan filter saat ini.")
