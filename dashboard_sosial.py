@@ -2506,7 +2506,7 @@ def create_kontrasepsi_chart(data, selected_years):
         )
         
         fig.update_layout(
-            height=400,
+            height=470,
             xaxis_title='Jumlah Peserta',
             yaxis_title='Jenis Kontrasepsi'
         )
@@ -2833,26 +2833,41 @@ def main():
         else:
             st.error("❌ Gagal memuat peta. Silakan coba lagi.")
         
-        # Instructions
+        # Instructions - VERSI HTML DENGAN FONT SANGAT KECIL
         st.markdown("""
         <div class="instructions">
-            <h4>💡 Cara Menggunakan Peta Interaktif:</h4>
-            <ul>
-                <li>🎯 <strong>Filter Data:</strong> Pilih jenis data yang ingin ditampilkan di peta</li>
-                <li>📍 <strong>Marker:</strong> Klik marker untuk melihat detail data per kecamatan</li>
-                <li>🎨 <strong>Warna Marker:</strong> 
-                    <br>• Bencana Alam: Hijau=Aman, Kuning=Rendah, Orange=Sedang, Merah=Tinggi
-                    <br>• Bantuan Sosial: Merah=Tidak Ada, Orange=Sedikit, Biru=Sedang, Hijau=Banyak
-                    <br>• KB Performance: Hijau=Pertumbuhan Bagus, Orange=Penurunan, Merah=Penurunan Besar
-                    <br>• Peserta KB: Merah=Tidak Ada, Orange=Sedikit, Biru=Sedang, Hijau=Banyak</li>
-                <li>🔍 <strong>Zoom & Pan:</strong> Gunakan mouse untuk memperbesar dan menggeser peta</li>
-                <li>📅 <strong>Filter Tahun:</strong> Gunakan filter tahun di sidebar untuk data yang sensitif waktu</li>
-                <li>📊 <strong>Statistik:</strong> Lihat ringkasan statistik di bawah peta untuk insight cepat</li>
-            </ul>
+            <h4 style="font-size: 1.1rem;">🗺️ Penjelasan Marker Peta:</h4>
+            <table style="width: 100%; border: none;">
+                <tr>
+                    <td style="width: 50%; vertical-align: top; padding-right: 20px;">
+                        <p style="font-size: 1rem; margin-bottom: 6px;"><strong>🌊 Bencana Alam:</strong></p>
+                        <p style="font-size: 0.9rem; line-height: 1.2; margin-bottom: 10px;">🟢 <strong>Hijau (Aman):</strong> Tidak ada bencana<br>
+                        🟡 <strong>Hijau Muda (Rendah):</strong> Di bawah rata-rata<br>
+                        🟠 <strong>Orange (Sedang):</strong> Di atas rata-rata<br>
+                        🔴 <strong>Merah (Tinggi):</strong> Daerah rawan bencana</p>
+                        <p style="font-size: 1rem; margin-bottom: 6px;"><strong>👥 Bantuan Sosial:</strong></p>
+                        <p style="font-size: 0.9rem; line-height: 1.2; margin-bottom: 10px;">🔴 <strong>Merah (Tidak Ada):</strong> Tidak ada penerima<br>
+                        🟠 <strong>Orange (Sedikit):</strong> Di bawah rata-rata<br>
+                        🔵 <strong>Biru Muda (Sedang):</strong> Mendekati rata-rata<br>
+                        🟢 <strong>Hijau (Banyak):</strong> Di atas rata-rata</p>
+                    </td>
+                    <td style="width: 50%; vertical-align: top; padding-left: 20px;">
+                        <p style="font-size: 1rem; margin-bottom: 6px;"><strong>📈 KB Performance:</strong></p>
+                        <p style="font-size: 0.9rem; line-height: 1.2; margin-bottom: 10px;">🟢 <strong>Hijau (Sangat Baik):</strong> Pertumbuhan ≥ 2%<br>
+                        🟡 <strong>Hijau Muda (Baik):</strong> Pertumbuhan 0-2%<br>
+                        🟠 <strong>Orange (Perhatian):</strong> Penurunan -5% hingga 0%<br>
+                        🔴 <strong>Merah (Buruk):</strong> Penurunan > -5%</p>
+                        <p style="font-size: 1rem; margin-bottom: 6px;"><strong>👶 Peserta KB:</strong></p>
+                        <p style="font-size: 0.9rem; line-height: 1.2; margin-bottom: 10px;">🔴 <strong>Merah (Tidak Ada):</strong> Tidak ada peserta<br>
+                        🟠 <strong>Orange (Rendah):</strong> Di bawah rata-rata<br>
+                        🔵 <strong>Biru Muda (Sedang):</strong> Mendekati rata-rata<br>
+                        🟢 <strong>Hijau (Tinggi):</strong> Di atas rata-rata</p>
+                    </td>
+                </tr>
+            </table>
+            <p style="text-align: center; margin-top: 8px; font-style: italic; font-size: 0.9rem; color: #888;">💡 Klik marker untuk detail per kecamatan</p>
         </div>
         """, unsafe_allow_html=True)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
         
         # ===========================
         # SECTION 1: BANTUAN SOSIAL
