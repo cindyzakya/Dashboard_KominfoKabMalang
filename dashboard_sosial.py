@@ -112,7 +112,7 @@ st.markdown("""
         text-align: center;
         margin: 10px 0;
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-        height: 180px;
+        height: 150px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -136,7 +136,7 @@ st.markdown("""
     .accurate-card h4 {
         margin: 0 0 10px 0;
         font-size: 1rem;
-        font-weight: 600;
+        font-weight: 00;
         line-height: 1.2;
         color: rgba(255, 255, 255, 0.95);
         text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
@@ -170,7 +170,7 @@ st.markdown("""
             font-size: 1.8rem;
         }
         .accurate-card h4 {
-            font-size: 0.9rem;
+            font-size: 1rem;
         }
     }
     
@@ -183,7 +183,7 @@ st.markdown("""
             font-size: 1.6rem;
         }
         .accurate-card h4 {
-            font-size: 0.85rem;
+            font-size: 1rem;
         }
     }
     
