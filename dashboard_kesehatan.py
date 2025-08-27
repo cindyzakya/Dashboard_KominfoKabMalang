@@ -6,13 +6,316 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 
-# Konfigurasi halaman
 st.set_page_config(
     page_title="Dashboard Analisis Stunting",
-    page_icon="📊",
+    page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# CUSTOM CSS
+st.markdown("""
+<style>
+    /* Garis custom lebih rapat */
+    .custom-hr {
+        border: 0;
+        border-top: 1px solid #ddd;
+        margin: 0.3rem 0;
+    }
+
+    /* Rapikan jarak antar elemen */
+    .stMarkdown, .stText, .stMetric, .stPlotlyChart, .stDataFrame {
+        margin-top: 0rem;
+        margin-bottom: 0.4rem;
+        padding: 0rem;
+    }
+
+    /* Atur kolom agar sejajar di top */
+    div[data-testid="column"] {
+        vertical-align: top;
+    }
+
+    /* Header Utama */
+    .main-header {
+        background: linear-gradient(90deg, #2a89a6 0%, #62718c 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .main-header h1 { margin-bottom: 0.2rem; font-size: 2.5rem; }
+    .main-header h3 { margin-bottom: 0.5rem; font-weight: 500; font-size: 1.2rem; }
+    .main-header p { font-style: italic; font-size: 1rem; }
+
+    /* Header untuk setiap seksi */
+    .section-header {
+        background-color: #f0f2f6;
+        padding: 0.7rem 1rem;
+        border-radius: 7px;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        border-left: 5px solid #2a89a6;
+    }
+    .section-header h3 {
+        margin: 0;
+        padding: 0;
+        color: #31333F;
+        font-size: 1.4rem;
+        font-weight: 600;
+    }
+
+    /* KPI Box Style */
+    .kpi-box {
+        background-color: #2a89a6;
+        color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        text-align: center;
+        height: 160px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .kpi-box:hover {
+        transform: scale(1.03);
+    }
+    .kpi-icon {
+        font-size: 2.5rem;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+    .kpi-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+    }
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    /* Insight Box di samping peta */
+    .insight-box {
+        padding: 0.8rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.8rem;
+        border-left: 5px solid;
+        text-align: center;
+    }
+    .insight-box h4 {
+        margin: 0 0 0.2rem 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #555;
+    }
+    .insight-box .kecamatan-name {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #333;
+    }
+    .insight-box .value {
+        font-size: 1rem;
+        font-weight: 500;
+        color: #444;
+    }
+    .insight-box-good {
+        border-color: #28a745;
+        background-color: #f0fff4;
+    }
+    .insight-box-bad {
+        border-color: #ffeeba;
+        background-color: #fff3cd;
+    }
+
+    /* Custom Alerts for Trend Section */
+    .custom-alert {
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid transparent;
+        border-radius: .375rem;
+        font-size: 0.9rem;
+    }
+    .custom-alert-success {
+        color: #2a89a6;
+        background-color: #eef7fa;
+        border-color: #bde0eb;
+    }
+    .custom-alert-info {
+        color: #31333F;
+        background-color: #f0f2f6;
+        border-color: #d6d8db;
+    }
+    .custom-alert-warning {
+        color: #856404;
+        background-color: #fff3cd;
+        border-color: #ffeeba;
+    }
+    .custom-alert-error {
+        color: #985356;
+        background-color: #fff0f0;
+        border-color: #c85a5a;
+    }
+
+    /* Insight Summary Box */
+    .insight-summary-box {
+        background-color: #f0f2f6;
+        border: 1px solid #d6d8db;
+        border-left: 5px solid #2a89a6;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        margin-top: 0.2rem;
+    }
+    .insight-summary-box ul {
+        margin: 0;
+        padding-left: 1.2rem;
+    }
+    .insight-summary-box li {
+        margin-bottom: 0.5rem;
+        padding-left: 0.5rem;
+    }
+
+    /* Sidebar Customization */
+    [data-testid="stSidebar"] {
+        background-color: #f8f9fa;
+    }
+
+    .sidebar-header {
+        background-color: #2a89a6;
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+
+    .sidebar-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    [data-testid="stExpander"] summary {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #31333F;
+    }
+
+    /* Status Cards */
+    .status-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-left: 4px solid #2a89a6;
+    }
+
+    .status-card h4 {
+        color: #2a89a6;
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+    }
+
+    .status-card p {
+        margin: 0;
+        color: #495057;
+        font-size: 0.9rem;
+    }
+
+    /* Metric Cards */
+    .metric-card {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .metric-card .metric-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #2a89a6;
+        margin-bottom: 0.3rem;
+    }
+
+    .metric-card .metric-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    /* Filter Info Box */
+    .filter-info {
+        background-color: #e8f4f8;
+        border: 1px solid #b3d9e6;
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin: 1rem 0;
+        font-size: 0.9rem;
+        color: #2a89a6;
+    }
+
+    /* Chart Container */
+    .chart-container {
+        background: white;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1rem 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Tab Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        padding-left: 20px;
+        padding-right: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px 8px 0px 0px;
+        color: #495057;
+        font-weight: 500;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #2a89a6;
+        color: white;
+    }
+
+    /* Data Table Styling */
+    .dataframe {
+        font-size: 0.9rem;
+    }
+
+    /* Custom Button Styling */
+    .stButton > button {
+        background-color: #2a89a6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: background-color 0.3s;
+    }
+
+    .stButton > button:hover {
+        background-color: #62718c;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Load data
 @st.cache_data
@@ -169,9 +472,13 @@ def create_map_analysis(selected_indicator_label, max_kecamatan, max_value, min_
         return f"**Sebaran {selected_indicator_label}**: Jumlah tertinggi terdapat di **{max_kecamatan}** ({max_value:.0f} unit) dan terendah di **{min_kecamatan}** ({min_value:.0f} unit). Rata-rata adalah {mean_value:.1f} unit per kecamatan dengan {above_avg} kecamatan berada di atas rata-rata dan {below_avg} kecamatan di bawah rata-rata."
 
 # =================== SIDEBAR FILTERS ===================
-with st.sidebar:
-    st.header("🔍 Filter Data")
-    
+st.sidebar.markdown("""
+<div class="sidebar-header">
+    <h2>🔍 Filter Data</h2>
+</div>
+""", unsafe_allow_html=True)
+
+with st.sidebar.expander("📅 **Filter Tahun**", expanded=True):
     # Initialize filter states if not exists
     if "reset_filters" not in st.session_state:
         st.session_state.reset_filters = False
@@ -179,9 +486,6 @@ with st.sidebar:
         st.session_state.reset_year_filter = False
     if "reset_kecamatan_filter" not in st.session_state:
         st.session_state.reset_kecamatan_filter = False
-    
-    # Filter Tahun
-    st.subheader("Tahun")
     
     # Set default values based on reset state
     default_checkbox_tahun = True if st.session_state.reset_filters or st.session_state.reset_year_filter else True
@@ -211,14 +515,8 @@ with st.sidebar:
         if not selected_year:
             selected_year = sorted(df['Tahun'].unique())
             st.warning("Tidak ada tahun dipilih, menampilkan semua tahun")
-    
-    # Reset flag after rerun
-    if st.session_state.reset_year_filter:
-        st.session_state.reset_year_filter = False
-    
-    # Filter Kecamatan
-    st.subheader("Kecamatan")
-    
+
+with st.sidebar.expander("🏘️ **Filter Kecamatan**", expanded=True):
     # Set default values based on reset state
     default_checkbox_kecamatan = True if st.session_state.reset_filters or st.session_state.reset_kecamatan_filter else True
     default_multiselect_kecamatan = sorted(df['Kecamatan'].unique())
@@ -247,14 +545,6 @@ with st.sidebar:
         if not selected_kecamatan:
             selected_kecamatan = sorted(df['Kecamatan'].unique())
             st.warning("Tidak ada kecamatan dipilih, menampilkan semua kecamatan")
-    
-    # Reset flag after rerun
-    if st.session_state.reset_kecamatan_filter:
-        st.session_state.reset_kecamatan_filter = False
-    
-    # Reset flag after rerun
-    if st.session_state.reset_filters:
-        st.session_state.reset_filters = False
 
 # Filter data berdasarkan seleksi
 filtered_df = df[
@@ -262,9 +552,16 @@ filtered_df = df[
     (df['Kecamatan'].isin(selected_kecamatan))
 ]
 
-# Title dan Header
-st.title("📊 Dashboard Analisis Data Stunting")
-st.markdown("Dashboard komprehensif untuk analisis data stunting di berbagai kecamatan")
+# ====================
+# MAIN HEADER
+# ====================
+st.markdown(f"""
+<div class="main-header">
+    <h1>🏥 Dashboard Analisis Data Stunting</h1>
+    <h3>Monitoring dan Evaluasi Stunting di Kabupaten Malang</h3>
+    <p><em>📊 Dashboard Komprehensif untuk Analisis Prevalensi Stunting dan Fasilitas Kesehatan</em></p>
+</div>
+""", unsafe_allow_html=True)
 
 # Cek apakah ada data setelah filtering
 if filtered_df.empty:
@@ -272,12 +569,12 @@ if filtered_df.empty:
     st.stop()
 
 # Info filter aktif
-st.markdown("---")
-
-# =================== METRICS UTAMA ===================
-st.header("📋 Ringkasan Utama")
-
 latest_year, latest_month = get_latest_period(filtered_df)
+
+# ====================
+# METRICS UTAMA
+# ====================
+st.markdown('<div class="section-header"><h3>📋 Indikator Utama Stunting</h3></div>', unsafe_allow_html=True)
 
 # Data stunting dari semua periode yang difilter
 total_stunting = filtered_df['Stunting'].sum()
@@ -298,32 +595,57 @@ else:
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    st.metric("Total Kasus Stunting", f"{total_stunting:,}")
+    st.markdown(f"""
+    <div class="kpi-box">
+        <div class="kpi-icon">👶</div>
+        <div class="kpi-title">Total Kasus Stunting</div>
+        <div class="kpi-value">{total_stunting:,}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with col2:
-    st.metric("Total Anak Diukur", f"{total_diukur:,}")
+    st.markdown(f"""
+    <div class="kpi-box">
+        <div class="kpi-icon">📏</div>
+        <div class="kpi-title">Total Anak Diukur</div>
+        <div class="kpi-value">{total_diukur:,}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with col3:
-    st.metric("Rata-rata Prevalensi", f"{avg_prevalensi:.2f}%")
+    st.markdown(f"""
+    <div class="kpi-box">
+        <div class="kpi-icon">📊</div>
+        <div class="kpi-title">Rata-rata Prevalensi</div>
+        <div class="kpi-value">{avg_prevalensi:.2f}%</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with col4:
-    st.metric("Total Puskesmas", f"{total_puskesmas:,}")
-    if latest_month:
-        st.caption(f"Data per {latest_month} {latest_year}")
+    st.markdown(f"""
+    <div class="kpi-box">
+        <div class="kpi-icon">🏥</div>
+        <div class="kpi-title">Total Puskesmas</div>
+        <div class="kpi-value">{total_puskesmas:,}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with col5:
-    st.metric("Total Rumah Sakit", f"{total_rs:,}")
-    if latest_month:
-        st.caption(f"Data per {latest_month} {latest_year}")
-
-# Analisis menggunakan fungsi utility
-
-st.markdown("---")
+    st.markdown(f"""
+    <div class="kpi-box">
+        <div class="kpi-icon">🏨</div>
+        <div class="kpi-title">Total Rumah Sakit</div>
+        <div class="kpi-value">{total_rs:,}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Siapkan data fasilitas kesehatan untuk peta dan analisis korelasi
 faskes_df = get_latest_facilities_data(filtered_df)
 
-st.header("🗺️ Peta Sebaran")
+# ====================
+# PETA SEBARAN
+# ====================
+st.markdown('<div class="section-header"><h3>🗺️ Peta Sebaran Indikator per Kecamatan</h3></div>', unsafe_allow_html=True)
 
 all_indicator_options = {
     "Prevalensi Stunting (%)": "Prevalensi Stunting Persen",
@@ -337,7 +659,7 @@ all_indicator_options = {
 
 available_indicators = {label: col for label, col in all_indicator_options.items() if col in filtered_df.columns}
 
-selected_indicator_label = st.selectbox("Pilih indikator untuk ditampilkan:", list(available_indicators.keys()))
+selected_indicator_label = st.selectbox("Pilih Indikator Peta", list(available_indicators.keys()))
 selected_indicator = available_indicators[selected_indicator_label]
 
 # Data untuk peta
@@ -354,60 +676,114 @@ if 'latest_year' in locals() and 'latest_month' in locals() and not faskes_df.em
 else:
     map_data_source = pd.DataFrame()
 
-if not map_data_source.empty and selected_indicator in map_data_source.columns:
-    map_display_df = map_data_source[['Kecamatan', selected_indicator]].dropna()
+# 2 kolom: Peta & Insight
+col1, col2 = st.columns([2, 1])
 
-    fig_map = px.choropleth_mapbox(
-        map_display_df,
-        geojson=geojson_kec,
-        locations="Kecamatan",
-        featureidkey="properties.nm_kecamatan",
-        color=selected_indicator,
-        color_continuous_scale="Viridis",
-        mapbox_style="carto-positron",
-        zoom=8,
-        center={"lat": -8.1, "lon": 112.6},
-        opacity=0.7,
-        labels={selected_indicator: selected_indicator_label},
-        hover_name="Kecamatan",
-    )
+with col1:
+    if not map_data_source.empty and selected_indicator in map_data_source.columns:
+        map_display_df = map_data_source[['Kecamatan', selected_indicator]].dropna()
 
-    # Tentukan format hovertemplate untuk menampilkan nilai dengan benar
-    if "Prevalensi Stunting (%)" in selected_indicator_label:
-        template_value = '%{z:.2f}%'
+        fig_map = px.choropleth_mapbox(
+            map_display_df,
+            geojson=geojson_kec,
+            locations="Kecamatan",
+            featureidkey="properties.nm_kecamatan",
+            color=selected_indicator,
+            color_continuous_scale=["#e8e8e8", "#d1ecf2", "#2a89a6", "#62718c", "#574249", "#ad9ea5", "#e4acac", "#c85a5a", "#985356"],
+            mapbox_style="carto-positron",
+            zoom=8,
+            center={"lat": -8.1, "lon": 112.6},
+            opacity=0.7,
+            labels={selected_indicator: selected_indicator_label},
+            hover_name="Kecamatan",
+        )
+
+        # Tentukan format hovertemplate untuk menampilkan nilai dengan benar
+        if "Prevalensi Stunting (%)" in selected_indicator_label:
+            template_value = '%{z:.2f}%'
+        else:
+            template_value = '%{z:,.0f}' # Gunakan koma untuk ribuan pada data non-persen
+
+        fig_map.update_traces(hovertemplate=f'<b>%{{location}}</b><br>{selected_indicator_label}: {template_value}<extra></extra>')
+
+        fig_map.update_layout(
+            margin={"r":0,"t":0,"l":0,"b":0}
+        )
+        st.plotly_chart(fig_map, use_container_width=True)
     else:
-        template_value = '%{z:,.0f}' # Gunakan koma untuk ribuan pada data non-persen
+        st.warning(f"Data untuk '{selected_indicator_label}' tidak tersedia dengan filter yang dipilih saat ini.")
 
-    fig_map.update_traces(hovertemplate=f'<b>%{{location}}</b><br>{selected_indicator_label}: {template_value}<extra></extra>')
-
-    fig_map.update_layout(
-        margin={"r":0,"t":40,"l":0,"b":0},
-        title=f"Sebaran {selected_indicator_label} per Kecamatan (Data: {latest_month} {latest_year})"
-    )
-    st.plotly_chart(fig_map, use_container_width=True)
-    
-    # Analisis menggunakan fungsi utility
-    max_value = map_display_df[selected_indicator].max()
-    min_value = map_display_df[selected_indicator].min()
-    mean_value = map_display_df[selected_indicator].mean()
-    
-    max_kecamatan = map_display_df[map_display_df[selected_indicator] == max_value]['Kecamatan'].iloc[0]
-    min_kecamatan = map_display_df[map_display_df[selected_indicator] == min_value]['Kecamatan'].iloc[0]
-    
-    above_avg = len(map_display_df[map_display_df[selected_indicator] > mean_value])
-    below_avg = len(map_display_df[map_display_df[selected_indicator] < mean_value])
-    
-    difference_ratio = max_value / min_value if min_value > 0 else float('inf')
-    
-    st.info(create_map_analysis(selected_indicator_label, max_kecamatan, max_value, min_kecamatan, min_value, mean_value, above_avg, below_avg, difference_ratio))
+with col2:
+    if not map_data_source.empty and selected_indicator in map_data_source.columns:
+        map_display_df = map_data_source[['Kecamatan', selected_indicator]].dropna()
         
-else:
-    st.warning(f"Data untuk '{selected_indicator_label}' tidak tersedia dengan filter yang dipilih saat ini.")
+        max_row = map_display_df.loc[map_display_df[selected_indicator].idxmax()]
+        min_row = map_display_df.loc[map_display_df[selected_indicator].idxmin()]
+        avg_value = map_display_df[selected_indicator].mean()
 
-st.markdown("---")
+        # Best/Worst Performer
+        if "Stunting" in selected_indicator_label:
+            # Untuk stunting, nilai rendah = baik
+            st.markdown(f"""
+            <div class="insight-box insight-box-good">
+                <h4>✅ Terendah (Terbaik)</h4>
+                <p class="kecamatan-name">{min_row['Kecamatan']}</p>
+                <span class="value">{min_row[selected_indicator]:.2f}%</span>
+            </div>
+            """, unsafe_allow_html=True)
 
-# =================== ANALISIS TREN YANG LEBIH EFEKTIF ===================
-st.header("📈 Tren Stunting dari Waktu ke Waktu")
+            st.markdown(f"""
+            <div class="insight-box insight-box-bad">
+                <h4>⚠️ Tertinggi (Perlu Perhatian)</h4>
+                <p class="kecamatan-name">{max_row['Kecamatan']}</p>
+                <span class="value">{max_row[selected_indicator]:.2f}%</span>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Untuk fasilitas, nilai tinggi = baik
+            st.markdown(f"""
+            <div class="insight-box insight-box-good">
+                <h4>🏆 Tertinggi (Terbaik)</h4>
+                <p class="kecamatan-name">{max_row['Kecamatan']}</p>
+                <span class="value">{max_row[selected_indicator]:.0f} unit</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown(f"""
+            <div class="insight-box insight-box-bad">
+                <h4>⚠️ Terendah (Perlu Perhatian)</h4>
+                <p class="kecamatan-name">{min_row['Kecamatan']}</p>
+                <span class="value">{min_row[selected_indicator]:.0f} unit</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Summary
+        above_avg = sum(map_display_df[selected_indicator] >= avg_value)
+        below_avg = sum(map_display_df[selected_indicator] < avg_value)
+        
+        if "Stunting" in selected_indicator_label:
+            st.markdown(f"""
+            <div style="text-align: center; font-size: 0.9rem;">
+                Rata-rata Kabupaten: <strong>{avg_value:.2f}%</strong><br>
+                <hr class="custom-hr">
+                ✅ {below_avg} Kec. di bawah rata-rata<br>
+                ❌ {above_avg} Kec. di atas rata-rata
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style="text-align: center; font-size: 0.9rem;">
+                Rata-rata Kabupaten: <strong>{avg_value:.1f} unit</strong><br>
+                <hr class="custom-hr">
+                ✅ {above_avg} Kec. di atas rata-rata<br>
+                ❌ {below_avg} Kec. di bawah rata-rata
+            </div>
+            """, unsafe_allow_html=True)
+
+# ====================
+# TREN STUNTING
+# ====================
+st.markdown('<div class="section-header"><h3>📈 Tren Stunting dari Waktu ke Waktu</h3></div>', unsafe_allow_html=True)
 
 # Buat tabs untuk organisasi yang lebih baik
 tab1, tab2 = st.tabs(["Tren Tahunan", "Tren per Kecamatan"])
@@ -432,45 +808,59 @@ with tab1:
         yearly_trend.columns = ['Tahun', 'Prevalensi_Mean', 'Prevalensi_Std', 'Total_Stunting', 'Total_Diukur']
         yearly_trend['Prevalensi_Std'] = yearly_trend['Prevalensi_Std'].fillna(0)
         
-        fig_trend = go.Figure()
+        col1, col2 = st.columns([2, 1])
         
-        fig_trend.add_trace(go.Scatter(
-            x=yearly_trend['Tahun'],
-            y=yearly_trend['Prevalensi_Mean'],
-            mode='lines+markers',
-            name='Prevalensi',
-            line=dict(width=4, color='#1f77b4'),
-            marker=dict(size=12),
-            hovertemplate='<b>Prevalensi</b><br>Tahun: %{x}<br>Prevalensi: %{y:.2f}%<br>Total Kasus: %{customdata[0]:,}<br>Total Diukur: %{customdata[1]:,}<extra></extra>',
-            customdata=yearly_trend[['Total_Stunting', 'Total_Diukur']].values
-        ))
-        
-        fig_trend.update_layout(
-            title='Tren Stunting per Tahun',
-            xaxis_title="Tahun",
-            yaxis_title="Persentase Stunting (%)",
-            height=500,
-            hovermode='x unified'
-        )
-        
-        st.plotly_chart(fig_trend, use_container_width=True)
-        
-        # Analisis tren tahunan
-        if len(yearly_trend) > 1:
-            trend_change = yearly_trend.iloc[-1]['Prevalensi_Mean'] - yearly_trend.iloc[0]['Prevalensi_Mean']
-            best_year = yearly_trend.loc[yearly_trend['Prevalensi_Mean'].idxmin(), 'Tahun']
-            worst_year = yearly_trend.loc[yearly_trend['Prevalensi_Mean'].idxmax(), 'Tahun']
-            best_prev = yearly_trend['Prevalensi_Mean'].min()
-            worst_prev = yearly_trend['Prevalensi_Mean'].max()
+        with col1:
+            fig_trend = go.Figure()
             
-            if abs(trend_change) < 1:
-                st.info(f"**Perkembangan**: Angka stunting relatif stabil dari tahun {yearly_trend.iloc[0]['Tahun']} ke {yearly_trend.iloc[-1]['Tahun']} dengan perubahan {abs(trend_change):.1f}%. Angka terendah tercatat pada tahun {best_year} ({best_prev:.1f}%) dan tertinggi pada tahun {worst_year} ({worst_prev:.1f}%).")
-            elif trend_change < 0:
-                st.success(f"**Perkembangan Positif**: Terjadi penurunan angka stunting sebesar {abs(trend_change):.1f}% dari tahun {yearly_trend.iloc[0]['Tahun']} ke {yearly_trend.iloc[-1]['Tahun']}. Angka terendah tercatat pada tahun {best_year} ({best_prev:.1f}%).")
+            fig_trend.add_trace(go.Scatter(
+                x=yearly_trend['Tahun'],
+                y=yearly_trend['Prevalensi_Mean'],
+                mode='lines+markers',
+                name='Prevalensi',
+                line=dict(width=4, color='#2a89a6'),
+                marker=dict(size=12),
+                hovertemplate='<b>Prevalensi</b><br>Tahun: %{x}<br>Prevalensi: %{y:.2f}%<br>Total Kasus: %{customdata[0]:,}<br>Total Diukur: %{customdata[1]:,}<extra></extra>',
+                customdata=yearly_trend[['Total_Stunting', 'Total_Diukur']].values
+            ))
+            
+            fig_trend.update_layout(
+                title='Tren Stunting per Tahun',
+                xaxis_title="Tahun",
+                yaxis_title="Persentase Stunting (%)",
+                height=500,
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(fig_trend, use_container_width=True)
+        
+        with col2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            # Analisis tren tahunan
+            if len(yearly_trend) > 1:
+                trend_change = yearly_trend.iloc[-1]['Prevalensi_Mean'] - yearly_trend.iloc[0]['Prevalensi_Mean']
+                best_year = yearly_trend.loc[yearly_trend['Prevalensi_Mean'].idxmin(), 'Tahun']
+                worst_year = yearly_trend.loc[yearly_trend['Prevalensi_Mean'].idxmax(), 'Tahun']
+                best_prev = yearly_trend['Prevalensi_Mean'].min()
+                worst_prev = yearly_trend['Prevalensi_Mean'].max()
+                
+                if abs(trend_change) < 1:
+                    st.markdown('<div class="custom-alert custom-alert-info">📊 <strong>Stabil:</strong> Perubahan minimal dalam periode observasi.</div>', unsafe_allow_html=True)
+                elif trend_change < 0:
+                    st.markdown('<div class="custom-alert custom-alert-success">✅ <strong>Membaik:</strong> Terjadi penurunan stunting yang positif.</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="custom-alert custom-alert-warning">⚠️ <strong>Perlu Perhatian:</strong> Terjadi peningkatan stunting.</div>', unsafe_allow_html=True)
+
+                st.markdown('<hr class="custom-hr">', unsafe_allow_html=True)
+                comparison_text = f"""
+                ℹ️ **Detail Perkembangan:**<br>
+                - Perubahan: {trend_change:+.1f}% ({yearly_trend.iloc[0]['Tahun']} → {yearly_trend.iloc[-1]['Tahun']})<br>
+                - Tahun terbaik: **{best_year}** ({best_prev:.1f}%)<br>
+                - Tahun terburuk: **{worst_year}** ({worst_prev:.1f}%)
+                """
+                st.markdown(comparison_text, unsafe_allow_html=True)
             else:
-                st.warning(f"**Perlu Perhatian**: Terjadi peningkatan angka stunting sebesar {trend_change:.1f}% dari tahun {yearly_trend.iloc[0]['Tahun']} ke {yearly_trend.iloc[-1]['Tahun']}. Angka tertinggi tercatat pada tahun {worst_year} ({worst_prev:.1f}%).")
-        else:
-            st.info("Data hanya tersedia untuk satu tahun.")
+                st.info("Data hanya tersedia untuk satu tahun.")
     
     else:  # Per Periode
         # Sorting periode yang benar
@@ -486,49 +876,63 @@ with tab1:
         period_trend['Prevalensi_Std'] = period_trend['Prevalensi_Std'].fillna(0)
         period_trend = period_trend.sort_values(['Tahun', 'Month_Num']).reset_index(drop=True)
         
-        fig_trend = go.Figure()
+        col1, col2 = st.columns([2, 1])
         
-        fig_trend.add_trace(go.Scatter(
-            x=period_trend['Periode'],
-            y=period_trend['Prevalensi_Mean'],
-            mode='lines+markers',
-            name='Prevalensi',
-            line=dict(width=4, color='#2E8B57'),
-            marker=dict(size=10),
-            hovertemplate='<b>Prevalensi</b><br>Periode: %{x}<br>Prevalensi: %{y:.2f}%<br>Total Kasus: %{customdata[0]:,}<br>Total Diukur: %{customdata[1]:,}<extra></extra>',
-            customdata=period_trend[['Total_Stunting', 'Total_Diukur']].values
-        ))
-        
-        fig_trend.update_layout(
-            title='Tren Stunting per Periode',
-            xaxis_title="Periode (Tahun-Bulan)",
-            yaxis_title="Persentase Stunting (%)",
-            height=500,
-            hovermode='x unified',
-            xaxis=dict(
-                categoryorder='array',
-                categoryarray=period_trend['Periode'].tolist()
-            )
-        )
-        
-        st.plotly_chart(fig_trend, use_container_width=True)
-        
-        # Analisis tren periodik
-        if len(period_trend) > 1:
-            highest_period = period_trend.loc[period_trend['Prevalensi_Mean'].idxmax(), 'Periode']
-            lowest_period = period_trend.loc[period_trend['Prevalensi_Mean'].idxmin(), 'Periode']
-            highest_prev = period_trend['Prevalensi_Mean'].max()
-            lowest_prev = period_trend['Prevalensi_Mean'].min()
-            range_prev = highest_prev - lowest_prev
+        with col1:
+            fig_trend = go.Figure()
             
-            if range_prev > 5:
-                st.warning(f"**Variasi Tinggi**: Terdapat variasi yang cukup besar antar periode dengan selisih {range_prev:.1f}%. Angka tertinggi terjadi pada periode **{highest_period}** ({highest_prev:.1f}%) dan terendah pada **{lowest_period}** ({lowest_prev:.1f}%).")
-            elif range_prev > 2:
-                st.info(f"**Variasi Sedang**: Terjadi fluktuasi sedang antar periode dengan selisih {range_prev:.1f}%. Periode tertinggi: **{highest_period}** ({highest_prev:.1f}%), terendah: **{lowest_period}** ({lowest_prev:.1f}%).")
+            fig_trend.add_trace(go.Scatter(
+                x=period_trend['Periode'],
+                y=period_trend['Prevalensi_Mean'],
+                mode='lines+markers',
+                name='Prevalensi',
+                line=dict(width=4, color='#62718c'),
+                marker=dict(size=10),
+                hovertemplate='<b>Prevalensi</b><br>Periode: %{x}<br>Prevalensi: %{y:.2f}%<br>Total Kasus: %{customdata[0]:,}<br>Total Diukur: %{customdata[1]:,}<extra></extra>',
+                customdata=period_trend[['Total_Stunting', 'Total_Diukur']].values
+            ))
+            
+            fig_trend.update_layout(
+                title='Tren Stunting per Periode',
+                xaxis_title="Periode (Tahun-Bulan)",
+                yaxis_title="Persentase Stunting (%)",
+                height=500,
+                hovermode='x unified',
+                xaxis=dict(
+                    categoryorder='array',
+                    categoryarray=period_trend['Periode'].tolist()
+                )
+            )
+            
+            st.plotly_chart(fig_trend, use_container_width=True)
+        
+        with col2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            # Analisis tren periodik
+            if len(period_trend) > 1:
+                highest_period = period_trend.loc[period_trend['Prevalensi_Mean'].idxmax(), 'Periode']
+                lowest_period = period_trend.loc[period_trend['Prevalensi_Mean'].idxmin(), 'Periode']
+                highest_prev = period_trend['Prevalensi_Mean'].max()
+                lowest_prev = period_trend['Prevalensi_Mean'].min()
+                range_prev = highest_prev - lowest_prev
+                
+                if range_prev > 5:
+                    st.markdown('<div class="custom-alert custom-alert-warning">⚠️ <strong>Variasi Tinggi:</strong> Fluktuasi besar antar periode.</div>', unsafe_allow_html=True)
+                elif range_prev > 2:
+                    st.markdown('<div class="custom-alert custom-alert-info">📊 <strong>Variasi Sedang:</strong> Fluktuasi normal antar periode.</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="custom-alert custom-alert-success">✅ <strong>Konsisten:</strong> Variasi minimal antar periode.</div>', unsafe_allow_html=True)
+
+                st.markdown('<hr class="custom-hr">', unsafe_allow_html=True)
+                comparison_text = f"""
+                ℹ️ **Detail Variasi:**<br>
+                - Rentang: {range_prev:.1f}%<br>
+                - Periode terbaik: **{lowest_period}** ({lowest_prev:.1f}%)<br>
+                - Periode terburuk: **{highest_period}** ({highest_prev:.1f}%)
+                """
+                st.markdown(comparison_text, unsafe_allow_html=True)
             else:
-                st.success(f"**Konsisten**: Angka stunting menunjukkan konsistensi yang baik antar periode dengan selisih hanya {range_prev:.1f}%. Periode terendah: **{lowest_period}** ({lowest_prev:.1f}%).")
-        else:
-            st.info("Data hanya tersedia untuk satu periode.")
+                st.info("Data hanya tersedia untuk satu periode.")
 
 with tab2:
     
@@ -568,62 +972,61 @@ with tab2:
                 'Jumlah Yang Diukur': 'sum'
             }).reset_index()
             
-            fig_single = go.Figure()
+            col1, col2 = st.columns([2, 1])
             
-            fig_single.add_trace(go.Scatter(
-                x=yearly_single_trend['Tahun'],
-                y=yearly_single_trend['Prevalensi Stunting Persen'],
-                mode='lines+markers',
-                name=f'{selected_kecamatan_single}',
-                line=dict(width=4, color='#e74c3c'),
-                marker=dict(size=12),
-                hovertemplate=f'<b>{selected_kecamatan_single}</b><br>Tahun: %{{x}}<br>Prevalensi: %{{y:.2f}}%<br>Total Kasus: %{{customdata[0]:,}}<br>Total Diukur: %{{customdata[1]:,}}<extra></extra>',
-                customdata=yearly_single_trend[['Stunting', 'Jumlah Yang Diukur']].values
-            ))
-            
-            fig_single.update_layout(
-                title=f'Tren Stunting per Tahun - {selected_kecamatan_single}',
-                xaxis_title="Tahun",
-                yaxis_title="Persentase Stunting (%)",
-                height=500,
-                hovermode='x unified'
-            )
-            
-            st.plotly_chart(fig_single, use_container_width=True)
-            
-            # Analisis tren untuk kecamatan tunggal
-            if len(yearly_single_trend) > 1:
-                single_trend_change = yearly_single_trend.iloc[-1]['Prevalensi Stunting Persen'] - yearly_single_trend.iloc[0]['Prevalensi Stunting Persen']
-                best_year_single = yearly_single_trend.loc[yearly_single_trend['Prevalensi Stunting Persen'].idxmin(), 'Tahun']
-                worst_year_single = yearly_single_trend.loc[yearly_single_trend['Prevalensi Stunting Persen'].idxmax(), 'Tahun']
-                best_prev_single = yearly_single_trend['Prevalensi Stunting Persen'].min()
-                worst_prev_single = yearly_single_trend['Prevalensi Stunting Persen'].max()
-                range_single = worst_prev_single - best_prev_single
+            with col1:
+                fig_single = go.Figure()
                 
-                col1, col2, col3 = st.columns(3)
-                with col1:
+                fig_single.add_trace(go.Scatter(
+                    x=yearly_single_trend['Tahun'],
+                    y=yearly_single_trend['Prevalensi Stunting Persen'],
+                    mode='lines+markers',
+                    name=f'{selected_kecamatan_single}',
+                    line=dict(width=4, color='#c85a5a'),
+                    marker=dict(size=12),
+                    hovertemplate=f'<b>{selected_kecamatan_single}</b><br>Tahun: %{{x}}<br>Prevalensi: %{{y:.2f}}%<br>Total Kasus: %{{customdata[0]:,}}<br>Total Diukur: %{{customdata[1]:,}}<extra></extra>',
+                    customdata=yearly_single_trend[['Stunting', 'Jumlah Yang Diukur']].values
+                ))
+                
+                fig_single.update_layout(
+                    title=f'Tren Stunting per Tahun - {selected_kecamatan_single}',
+                    xaxis_title="Tahun",
+                    yaxis_title="Persentase Stunting (%)",
+                    height=500,
+                    hovermode='x unified'
+                )
+                
+                st.plotly_chart(fig_single, use_container_width=True)
+
+            with col2:
+                st.markdown("<br>", unsafe_allow_html=True)
+                # Analisis tren untuk kecamatan tunggal
+                if len(yearly_single_trend) > 1:
+                    single_trend_change = yearly_single_trend.iloc[-1]['Prevalensi Stunting Persen'] - yearly_single_trend.iloc[0]['Prevalensi Stunting Persen']
+                    best_year_single = yearly_single_trend.loc[yearly_single_trend['Prevalensi Stunting Persen'].idxmin(), 'Tahun']
+                    worst_year_single = yearly_single_trend.loc[yearly_single_trend['Prevalensi Stunting Persen'].idxmax(), 'Tahun']
+                    best_prev_single = yearly_single_trend['Prevalensi Stunting Persen'].min()
+                    worst_prev_single = yearly_single_trend['Prevalensi Stunting Persen'].max()
+                    range_single = worst_prev_single - best_prev_single
+                    
                     if single_trend_change < -1:
-                        st.success(f"**Tren Membaik**\nTurun {abs(single_trend_change):.1f}%")
+                        st.markdown('<div class="custom-alert custom-alert-success">✅ <strong>Tren Membaik:</strong> Penurunan signifikan.</div>', unsafe_allow_html=True)
                     elif single_trend_change > 1:
-                        st.error(f"**Tren Memburuk**\nNaik {single_trend_change:.1f}%")
+                        st.markdown('<div class="custom-alert custom-alert-error">❌ <strong>Tren Memburuk:</strong> Peningkatan signifikan.</div>', unsafe_allow_html=True)
                     else:
-                        st.info(f"**Tren Stabil**\nPerubahan {single_trend_change:+.1f}%")
-                
-                with col2:
-                    st.metric("Tahun Terbaik", f"{best_year_single}", f"{best_prev_single:.1f}%")
-                
-                with col3:
-                    st.metric("Tahun Terburuk", f"{worst_year_single}", f"{worst_prev_single:.1f}%")
-                
-                # Insight untuk kecamatan tunggal
-                if range_single > 5:
-                    st.warning(f"**Fluktuasi Tinggi**: Kecamatan **{selected_kecamatan_single}** mengalami fluktuasi besar dengan rentang {range_single:.1f}% antara tahun terbaik dan terburuk.")
-                elif range_single > 2:
-                    st.info(f"**Fluktuasi Sedang**: Terdapat variasi {range_single:.1f}% dalam periode yang diamati. Kondisi cukup stabil dengan beberapa fluktuasi.")
+                        st.markdown('<div class="custom-alert custom-alert-info">📊 <strong>Tren Stabil:</strong> Perubahan minimal.</div>', unsafe_allow_html=True)
+
+                    st.markdown('<hr class="custom-hr">', unsafe_allow_html=True)
+                    comparison_text = f"""
+                    ℹ️ **Detail untuk {selected_kecamatan_single}:**<br>
+                    - Perubahan: {single_trend_change:+.1f}%<br>
+                    - Tahun terbaik: **{best_year_single}** ({best_prev_single:.1f}%)<br>
+                    - Tahun terburuk: **{worst_year_single}** ({worst_prev_single:.1f}%)<br>
+                    - Rentang variasi: **{range_single:.1f}%**
+                    """
+                    st.markdown(comparison_text, unsafe_allow_html=True)
                 else:
-                    st.success(f"**Konsisten**: Kecamatan **{selected_kecamatan_single}** menunjukkan konsistensi yang baik dengan rentang hanya {range_single:.1f}%.")
-            else:
-                st.info("Data hanya tersedia untuk satu tahun.")
+                    st.info("Data hanya tersedia untuk satu tahun.")
         
         else:  # Per Periode
             # Sorting periode yang benar untuk kecamatan tunggal
@@ -637,74 +1040,68 @@ with tab2:
             
             period_single_trend = period_single_trend.sort_values(['Tahun', 'Month_Num']).reset_index(drop=True)
             
-            fig_single_period = go.Figure()
+            col1, col2 = st.columns([2, 1])
             
-            fig_single_period.add_trace(go.Scatter(
-                x=period_single_trend['Periode'],
-                y=period_single_trend['Prevalensi Stunting Persen'],
-                mode='lines+markers',
-                name=f'{selected_kecamatan_single}',
-                line=dict(width=4, color='#9b59b6'),
-                marker=dict(size=10),
-                hovertemplate=f'<b>{selected_kecamatan_single}</b><br>Periode: %{{x}}<br>Prevalensi: %{{y:.2f}}%<br>Total Kasus: %{{customdata[0]:,}}<br>Total Diukur: %{{customdata[1]:,}}<extra></extra>',
-                customdata=period_single_trend[['Stunting', 'Jumlah Yang Diukur']].values
-            ))
-            
-            fig_single_period.update_layout(
-                title=f'Tren Stunting per Periode - {selected_kecamatan_single}',
-                xaxis_title="Periode (Tahun-Bulan)",
-                yaxis_title="Persentase Stunting (%)",
-                height=500,
-                hovermode='x unified',
-                xaxis=dict(
-                    categoryorder='array',
-                    categoryarray=period_single_trend['Periode'].tolist()
+            with col1:
+                fig_single_period = go.Figure()
+                
+                fig_single_period.add_trace(go.Scatter(
+                    x=period_single_trend['Periode'],
+                    y=period_single_trend['Prevalensi Stunting Persen'],
+                    mode='lines+markers',
+                    name=f'{selected_kecamatan_single}',
+                    line=dict(width=4, color='#985356'),
+                    marker=dict(size=10),
+                    hovertemplate=f'<b>{selected_kecamatan_single}</b><br>Periode: %{{x}}<br>Prevalensi: %{{y:.2f}}%<br>Total Kasus: %{{customdata[0]:,}}<br>Total Diukur: %{{customdata[1]:,}}<extra></extra>',
+                    customdata=period_single_trend[['Stunting', 'Jumlah Yang Diukur']].values
+                ))
+                
+                fig_single_period.update_layout(
+                    title=f'Tren Stunting per Periode - {selected_kecamatan_single}',
+                    xaxis_title="Periode (Tahun-Bulan)",
+                    yaxis_title="Persentase Stunting (%)",
+                    height=500,
+                    hovermode='x unified',
+                    xaxis=dict(
+                        categoryorder='array',
+                        categoryarray=period_single_trend['Periode'].tolist()
+                    )
                 )
-            )
-            
-            st.plotly_chart(fig_single_period, use_container_width=True)
-            
-            # Analisis tren periodik untuk kecamatan tunggal
-            if len(period_single_trend) > 1:
-                highest_period_single = period_single_trend.loc[period_single_trend['Prevalensi Stunting Persen'].idxmax(), 'Periode']
-                lowest_period_single = period_single_trend.loc[period_single_trend['Prevalensi Stunting Persen'].idxmin(), 'Periode']
-                highest_prev_single = period_single_trend['Prevalensi Stunting Persen'].max()
-                lowest_prev_single = period_single_trend['Prevalensi Stunting Persen'].min()
-                range_period_single = highest_prev_single - lowest_prev_single
                 
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Periode Terbaik", lowest_period_single, f"{lowest_prev_single:.1f}%")
-                
-                with col2:
-                    st.metric("Periode Terburuk", highest_period_single, f"{highest_prev_single:.1f}%")
-                
-                with col3:
-                    st.metric("Rentang Variasi", f"{range_period_single:.1f}%", "Antar Periode")
-                
-                # Analisis pola musiman untuk kecamatan tunggal
-                monthly_avg_single = period_single_trend.groupby('Bulan')['Prevalensi Stunting Persen'].mean()
-                month_order = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
-                               'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-                monthly_avg_single = monthly_avg_single.reindex([month for month in month_order if month in monthly_avg_single.index])
-                
-                if len(monthly_avg_single) > 1:
-                    best_month_single = monthly_avg_single.idxmin()
-                    worst_month_single = monthly_avg_single.idxmax()
-                    seasonal_range_single = monthly_avg_single.max() - monthly_avg_single.min()
+                st.plotly_chart(fig_single_period, use_container_width=True)
+
+            with col2:
+                st.markdown("<br>", unsafe_allow_html=True)
+                # Analisis tren periodik untuk kecamatan tunggal
+                if len(period_single_trend) > 1:
+                    highest_period_single = period_single_trend.loc[period_single_trend['Prevalensi Stunting Persen'].idxmax(), 'Periode']
+                    lowest_period_single = period_single_trend.loc[period_single_trend['Prevalensi Stunting Persen'].idxmin(), 'Periode']
+                    highest_prev_single = period_single_trend['Prevalensi Stunting Persen'].max()
+                    lowest_prev_single = period_single_trend['Prevalensi Stunting Persen'].min()
+                    range_period_single = highest_prev_single - lowest_prev_single
                     
-                    if seasonal_range_single > 3:
-                        st.warning(f"**Pola Musiman Kuat**: Kecamatan **{selected_kecamatan_single}** menunjukkan variasi musiman yang signifikan (rentang {seasonal_range_single:.1f}%). Bulan terbaik: **{best_month_single}**, terburuk: **{worst_month_single}**.")
-                    elif seasonal_range_single > 1:
-                        st.info(f"**Pola Musiman Sedang**: Terdapat variasi musiman dengan rentang {seasonal_range_single:.1f}%. Bulan terbaik: **{best_month_single}**, terburuk: **{worst_month_single}**.")
+                    if range_period_single > 5:
+                        st.markdown('<div class="custom-alert custom-alert-warning">⚠️ <strong>Variasi Tinggi:</strong> Fluktuasi besar antar periode.</div>', unsafe_allow_html=True)
+                    elif range_period_single > 2:
+                        st.markdown('<div class="custom-alert custom-alert-info">📊 <strong>Variasi Sedang:</strong> Fluktuasi normal antar periode.</div>', unsafe_allow_html=True)
                     else:
-                        st.success(f"**Konsisten Sepanjang Tahun**: Kecamatan **{selected_kecamatan_single}** menunjukkan konsistensi yang baik sepanjang tahun dengan variasi minimal ({seasonal_range_single:.1f}%).")
-            else:
-                st.info("Data hanya tersedia untuk satu periode.")
+                        st.markdown('<div class="custom-alert custom-alert-success">✅ <strong>Konsisten:</strong> Variasi minimal antar periode.</div>', unsafe_allow_html=True)
 
-st.markdown("---")
+                    st.markdown('<hr class="custom-hr">', unsafe_allow_html=True)
+                    comparison_text = f"""
+                    ℹ️ **Detail untuk {selected_kecamatan_single}:**<br>
+                    - Rentang variasi: **{range_period_single:.1f}%**<br>
+                    - Periode terbaik: **{lowest_period_single}** ({lowest_prev_single:.1f}%)<br>
+                    - Periode terburuk: **{highest_period_single}** ({highest_prev_single:.1f}%)
+                    """
+                    st.markdown(comparison_text, unsafe_allow_html=True)
+                else:
+                    st.info("Data hanya tersedia untuk satu periode.")
 
-st.header("🗺️ Perbandingan Antar Wilayah")
+# ====================
+# PERBANDINGAN ANTAR WILAYAH
+# ====================
+st.markdown('<div class="section-header"><h3>🗺️ Perbandingan Antar Wilayah</h3></div>', unsafe_allow_html=True)
 
 # Data untuk distribusi diambil dari periode terakhir untuk konsistensi dengan peta dan korelasi
 if 'latest_year' in locals() and 'latest_month' in locals() and latest_month is not None:
@@ -807,13 +1204,12 @@ medium_count = kategori_counts.get('Sedang (5-10%)', 0)
 
 st.info(f"**Distribusi Kategori**: Dari {total_kecamatan} kecamatan, {low_count} ({low_count/total_kecamatan*100:.0f}%) berada dalam kategori rendah, {medium_count} ({medium_count/total_kecamatan*100:.0f}%) kategori sedang, dan {high_count} ({high_pct:.0f}%) dalam kategori tinggi. Distribusi ini memberikan gambaran kondisi stunting di wilayah yang diamati.")
 
-st.markdown("---")
+# ====================
+# RANKING PERUBAHAN PREVALENSI
+# ====================
+st.markdown('<div class="section-header"><h3>📈📉 Perubahan Stunting Antar Waktu</h3></div>', unsafe_allow_html=True)
 
-# =================== RANKING PERUBAHAN PREVALENSI ===================
 col_header1, col_header2 = st.columns([3, 1])
-
-with col_header1:
-    st.header("📈📉 Perubahan Stunting Antar Waktu")
 
 with col_header2:
     sort_option = st.selectbox(
@@ -880,26 +1276,45 @@ if filtered_df['Tahun'].nunique() > 1:
         
         with col1:
             perbaikan_count = len(perubahan_pivot[perubahan_pivot['Perubahan'] < 0])
-            st.metric("Kecamatan Menurun", perbaikan_count, delta=f"{perbaikan_count/len(perubahan_pivot)*100:.0f}% dari total")
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value">{perbaikan_count}</div>
+                <div class="metric-label">Kecamatan Menurun</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col2:
             memburuk_count = len(perubahan_pivot[perubahan_pivot['Perubahan'] > 0])
-            st.metric("Kecamatan Meningkat", memburuk_count, delta=f"{memburuk_count/len(perubahan_pivot)*100:.0f}% dari total")
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value">{memburuk_count}</div>
+                <div class="metric-label">Kecamatan Meningkat</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col3:
             avg_change = perubahan_pivot['Perubahan'].mean()
-            st.metric("Rata-rata Perubahan", f"{avg_change:.2f}%", delta="Negatif = Menurun")
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value">{avg_change:.2f}%</div>
+                <div class="metric-label">Rata-rata Perubahan</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col4:
             best_performer = perubahan_pivot.sort_values('Perubahan').iloc[0]['Kecamatan']
-            worst_performer = perubahan_pivot.sort_values('Perubahan', ascending=False).iloc[0]['Kecamatan']
-            st.metric("Penurunan Terbesar", best_performer)
-            st.metric("Peningkatan Terbesar", worst_performer)
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value" style="font-size: 1.2rem;">{best_performer}</div>
+                <div class="metric-label">Penurunan Terbesar</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         # Analisis perubahan
         improvement_rate = (perbaikan_count / len(perubahan_pivot)) * 100
         best_change = perubahan_pivot['Perubahan'].min()
         worst_change = perubahan_pivot['Perubahan'].max()
+        worst_performer = perubahan_pivot.sort_values('Perubahan', ascending=False).iloc[0]['Kecamatan']
         
         st.info(f"**Ringkasan Perubahan**: Dari periode {tahun_awal} ke {tahun_akhir}, {improvement_rate:.0f}% kecamatan ({perbaikan_count} kecamatan) mengalami penurunan stunting, sementara {100-improvement_rate:.0f}% mengalami peningkatan. Penurunan terbesar terjadi di **{best_performer}** ({abs(best_change):.1f}%), sedangkan peningkatan terbesar di **{worst_performer}** ({worst_change:.1f}%). Rata-rata perubahan secara keseluruhan adalah {avg_change:+.1f}%.")
 
@@ -925,10 +1340,10 @@ if filtered_df['Tahun'].nunique() > 1:
 else:
     st.info("Data hanya tersedia untuk satu tahun, sehingga analisis perubahan tidak dapat dilakukan.")
 
-st.markdown("---")
-
-# =================== ANALISIS KORELASI & KOMPOSISI ===================
-st.header("🔬 Hubungan Stunting dengan Fasilitas Kesehatan")
+# ====================
+# ANALISIS KORELASI & KOMPOSISI
+# ====================
+st.markdown('<div class="section-header"><h3>🔬 Hubungan Stunting dengan Fasilitas Kesehatan</h3></div>', unsafe_allow_html=True)
 
 if 'latest_year' in locals() and 'latest_month' in locals() and latest_month is not None:
     latest_period_data_for_corr = filtered_df[
@@ -979,8 +1394,8 @@ if not analysis_df.empty and len(analysis_df) > 1:
         title=f'Perbandingan Stunting vs Fasilitas Kesehatan - {len(display_kecamatan)} Kecamatan',
         text='Nilai',
         color_discrete_map={
-            'Persentase Stunting (%)': '#FF6B6B',
-            'Jumlah Fasilitas Kesehatan': '#4ECDC4'
+            'Persentase Stunting (%)': '#c85a5a',
+            'Jumlah Fasilitas Kesehatan': '#2a89a6'
         }
     )
     
@@ -1013,37 +1428,56 @@ if not analysis_df.empty and len(analysis_df) > 1:
     with col1:
         if correlation < -0.3:
             delta_text = "Hubungan Negatif"
+            delta_color = "normal"
         elif correlation > 0.3:
             delta_text = "Hubungan Positif"
+            delta_color = "inverse"
         else:
             delta_text = "Hubungan Lemah"
-        st.metric("Korelasi", f"{correlation:.2f}", delta=delta_text)
+            delta_color = "off"
+        
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{correlation:.2f}</div>
+            <div class="metric-label">Korelasi ({delta_text})</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col2:
         if not faskes_tinggi_prev_rendah.empty:
             best_kecamatan = faskes_tinggi_prev_rendah.iloc[0]['Kecamatan']
             best_prevalensi = faskes_tinggi_prev_rendah.iloc[0]['Prevalensi Stunting Persen']
             best_faskes = faskes_tinggi_prev_rendah.iloc[0]['Total Faskes']
-            delta_text = f"{best_faskes:.0f} faskes, {best_prevalensi:.1f}% stunting"
         else:
             best_row = analysis_df.nsmallest(1, 'Prevalensi Stunting Persen').iloc[0]
             best_kecamatan = best_row['Kecamatan']
-            delta_text = f"{best_row['Total Faskes']:.0f} faskes, {best_row['Prevalensi Stunting Persen']:.1f}% stunting"
+            best_prevalensi = best_row['Prevalensi Stunting Persen']
+            best_faskes = best_row['Total Faskes']
         
-        st.metric("Kondisi Terbaik", best_kecamatan, delta=delta_text)
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value" style="font-size: 1.2rem;">{best_kecamatan}</div>
+            <div class="metric-label">Kondisi Terbaik<br>({best_faskes:.0f} faskes, {best_prevalensi:.1f}% stunting)</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col3:
         if not faskes_rendah_prev_tinggi.empty:
             challenge_kecamatan = faskes_rendah_prev_tinggi.iloc[0]['Kecamatan']
             challenge_prevalensi = faskes_rendah_prev_tinggi.iloc[0]['Prevalensi Stunting Persen']
             challenge_faskes = faskes_rendah_prev_tinggi.iloc[0]['Total Faskes']
-            delta_text = f"{challenge_faskes:.0f} faskes, {challenge_prevalensi:.1f}% stunting"
         else:
             challenge_row = analysis_df.nlargest(1, 'Prevalensi Stunting Persen').iloc[0]
             challenge_kecamatan = challenge_row['Kecamatan']
-            delta_text = f"{challenge_row['Total Faskes']:.0f} faskes, {challenge_row['Prevalensi Stunting Persen']:.1f}% stunting"
+            challenge_prevalensi = challenge_row['Prevalensi Stunting Persen']
+            challenge_faskes = challenge_row['Total Faskes']
         
-        st.metric("Perlu Perhatian", challenge_kecamatan, delta=delta_text)
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value" style="font-size: 1.2rem;">{challenge_kecamatan}</div>
+            <div class="metric-label">Perlu Perhatian<br>({challenge_faskes:.0f} faskes, {challenge_prevalensi:.1f}% stunting)</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Analisis menggunakan fungsi utility
     avg_faskes = analysis_df['Total Faskes'].mean()
@@ -1052,10 +1486,10 @@ if not analysis_df.empty and len(analysis_df) > 1:
     
     st.info(create_correlation_analysis(correlation, avg_faskes, high_faskes_low_prev, low_faskes_high_prev))
 
-st.markdown("---")
-
-# ========== KOMPOSISI STUNTING (FULL WIDTH) ==========
-st.subheader("📊 Komposisi Jenis Stunting")
+# ====================
+# KOMPOSISI STUNTING
+# ====================
+st.markdown('<div class="section-header"><h3>📊 Komposisi Jenis Stunting</h3></div>', unsafe_allow_html=True)
 
 composition_df = filtered_df.groupby('Tahun').agg({
     'Pendek': 'sum',
@@ -1068,14 +1502,16 @@ fig_comp.add_trace(go.Bar(
     y=composition_df['Pendek'], 
     name='Pendek',
     text=composition_df['Pendek'],
-    textposition='inside'
+    textposition='inside',
+    marker_color='#2a89a6'
 ))
 fig_comp.add_trace(go.Bar(
     x=composition_df['Tahun'], 
     y=composition_df['Sangat Pendek'], 
     name='Sangat Pendek',
     text=composition_df['Sangat Pendek'],
-    textposition='inside'
+    textposition='inside',
+    marker_color='#c85a5a'
 ))
 fig_comp.update_layout(
     barmode='stack', 
@@ -1106,5 +1542,3 @@ if len(composition_df) > 1:
     st.info(f"**Komposisi Stunting**: Dari total {total_stunting_comp:,} kasus stunting, {pct_sangat_pendek:.0f}% ({total_sangat_pendek:,} kasus) termasuk kategori 'Sangat Pendek' dan {100-pct_sangat_pendek:.0f}% ({total_pendek:,} kasus) kategori 'Pendek'. Dari periode {earliest_year_comp['Tahun']} ke {latest_year_comp['Tahun']}, proporsi kasus 'Sangat Pendek' mengalami {'peningkatan' if severity_trend > 0 else 'penurunan'} sebesar {abs(severity_trend):.1f}%.")
 else:
     st.info(f"**Komposisi Stunting**: Dari total {total_stunting_comp:,} kasus stunting, {pct_sangat_pendek:.0f}% ({total_sangat_pendek:,} kasus) termasuk kategori 'Sangat Pendek' yang memerlukan penanganan intensif, sementara {100-pct_sangat_pendek:.0f}% ({total_pendek:,} kasus) masuk kategori 'Pendek' yang dapat ditangani dengan intervensi preventif.")
-
-st.markdown("---")
