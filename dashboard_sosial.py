@@ -188,21 +188,20 @@ st.markdown("""
     }
     
     .kpi-section {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        padding: 30px;
-        border-radius: 20px;
-        margin: 30px 0;
-        border: 2px solid #dee2e6;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        background-color: #f0f2f6;
+        padding: 0.7rem 1rem;
+        border-radius: 7px;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        border-left: 5px solid #004c70; /* Aksen warna biru */
     }
     
     .kpi-section h3 {
-        text-align: center;
-        color: #2c3e50;
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin: 0 0 25px 0;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        margin: 0;
+        padding: 0;
+        color: #31333F;
+        font-size: 1.4rem; /* Ukuran font diperbesar */
+        font-weight: 600;  /* Diberi sedikit ketebalan */
     }
     
     /* Ensure equal column widths */
@@ -2612,7 +2611,7 @@ def main():
         # Display KPIs - DIPERBAIKI DENGAN LAYOUT YANG LEBIH RAPI
         st.markdown("""
         <div class="kpi-section">
-            <h3>📊 Key Performance Indicators</h3>
+            <h3>📊 Indikator Utama Sosial</h3>
         """, unsafe_allow_html=True)
         
         # KPI Cards dengan layout yang sama
