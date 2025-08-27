@@ -679,37 +679,69 @@ else:
 # 2 kolom: Peta & Insight
 col1, col2 = st.columns([2, 1])
 
+# ...existing code...
 with col1:
     if not map_data_source.empty and selected_indicator in map_data_source.columns:
-        map_display_df = map_data_source[['Kecamatan', selected_indicator]].dropna()
+        # Pastikan kolom 'kecamatan' huruf kecil
+        map_display_df = map_data_source[['Kecamatan', selected_indicator]].dropna().rename(columns={"Kecamatan": "kecamatan"})
 
         fig_map = px.choropleth_mapbox(
             map_display_df,
             geojson=geojson_kec,
-            locations="Kecamatan",
+            locations="kecamatan",
             featureidkey="properties.nm_kecamatan",
             color=selected_indicator,
             color_continuous_scale=["#e8e8e8", "#d1ecf2", "#2a89a6", "#62718c", "#574249", "#ad9ea5", "#e4acac", "#c85a5a", "#985356"],
             mapbox_style="carto-positron",
             zoom=8,
             center={"lat": -8.1, "lon": 112.6},
-            opacity=0.7,
+            opacity=1,
             labels={selected_indicator: selected_indicator_label},
-            hover_name="Kecamatan",
+            hover_name="kecamatan",
         )
 
-        # Tentukan format hovertemplate untuk menampilkan nilai dengan benar
-        if "Prevalensi Stunting (%)" in selected_indicator_label:
-            template_value = '%{z:.2f}%'
-        else:
-            template_value = '%{z:,.0f}' # Gunakan koma untuk ribuan pada data non-persen
+        # Tambahkan label nama kecamatan di atas map
+        import geopandas as gpd
+        gdf = gpd.GeoDataFrame.from_features(geojson_kec["features"])
+        gdf['centroid'] = gdf.geometry.centroid
+        gdf = gdf.rename(columns={"nm_kecamatan": "kecamatan"})
+        gdf = gdf.merge(map_display_df, on="kecamatan", how="left")
+        lats = [point.y for point in gdf['centroid']]
+        lons = [point.x for point in gdf['centroid']]
+        texts = gdf['kecamatan']
 
-        fig_map.update_traces(hovertemplate=f'<b>%{{location}}</b><br>{selected_indicator_label}: {template_value}<extra></extra>')
+        # Layer shadow (hitam tipis)
+        fig_map.add_trace(go.Scattermapbox(
+            lon=[x + 0.0008 for x in lons],
+            lat=[y - 0.0008 for y in lats],
+            mode='text',
+            text=texts,
+            textfont=dict(size=8, color='black'),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+        # Layer utama (putih tebal)
+        fig_map.add_trace(go.Scattermapbox(
+            lon=lons,
+            lat=lats,
+            mode='text',
+            text=texts,
+            textfont=dict(size=8, color='white', family="Arial Black"),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+
+        # Hovertemplate: nama kecamatan + nilai indikator
+        fig_map.update_traces(
+            selector=dict(type='choroplethmapbox'),
+            hovertemplate="<b>%{location}</b><br>" + selected_indicator_label + ": %{z}<extra></extra>"
+        )
 
         fig_map.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0}
         )
         st.plotly_chart(fig_map, use_container_width=True)
+# ...existing code...
     else:
         st.warning(f"Data untuk '{selected_indicator_label}' tidak tersedia dengan filter yang dipilih saat ini.")
 
