@@ -5,4 +5,9 @@ statsmodels
 matplotlib
 seaborn
 geopandas
+folium
 streamlit-folium
+openpyxl
+xlsxwriter
+Pillow
+requests
