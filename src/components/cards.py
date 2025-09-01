@@ -30,7 +30,7 @@ def create_dashboard_card(title, icon, description, features, page_key):
         }
         st.switch_page(page_mapping[page_key])
 
-def create_kpi_card(title, value, icon, description=None):
+def create_kpi_card(icon, title, value, description=None):
     """Create KPI card component"""
     desc_html = f"<p>{description}</p>" if description else ""
     
@@ -42,7 +42,32 @@ def create_kpi_card(title, value, icon, description=None):
         {desc_html}
     </div>
     """, unsafe_allow_html=True)
-    
+
+def create_kpi_card_html(icon, title, value, description=None):
+    """Return KPI card HTML string"""
+    desc_html = f"<p>{description}</p>" if description else ""
+    return f"""
+    <div class="kpi-box">
+        <div class="kpi-icon">{icon}</div>
+        <div class="kpi-title">{title}</div>
+        <div class="kpi-value">{value}</div>
+        {desc_html}
+    </div>
+    """
+
+def render_kpi_cards(cards):
+    """
+    Render multiple KPI cards in a responsive CSS grid.
+    cards: list of tuples (icon, title, value, description)
+    """
+    cards_html = "".join([create_kpi_card_html(*card) for card in cards])
+    st.markdown(f"""
+    <div class="kpi-container">
+        {cards_html}
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def create_white_kpi_card(value, title, description=None):
     """Create white KPI card component with optional description"""
     # Hanya tampilkan description jika ada dan tidak kosong

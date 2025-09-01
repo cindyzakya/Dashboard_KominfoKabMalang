@@ -39,10 +39,10 @@ def render_footer():
         <h3>{APP_ICON} {APP_TITLE}</h3>
         <p><strong>Dinas Komunikasi dan Informatika Kabupaten Malang</strong></p>
         <p>📧 Email: kominfo@malangkab.go.id | 🌐 Website: malangkab.go.id</p>
-        <p>🕒 Last Updated: {current_time}</p>
+        <p><strong>🔗 Data Source:</strong> Kabupaten Malang Satu Data (KAMASUTA) | <strong>🕒 Last Updated: {current_time}</p>
         <hr style="margin: 20px 0; opacity: 0.3;">
         <p style="font-size: 0.9rem; opacity: 0.8;">
-            © 2024 Kabupaten Malang. Dashboard ini dibuat untuk mendukung transparansi dan akuntabilitas data publik.
+            © 2025 Kabupaten Malang. Dashboard ini dibuat untuk mendukung transparansi dan akuntabilitas data publik.
         </p>
         <p style="font-size: 0.8rem; opacity: 0.7;">
             👨‍💻 Developed by: @rosaaurelia, @cindyzakya, @anitamds - PKL Diskominfo Kabupaten Malang Juli-Agustus 2025
@@ -71,3 +71,4 @@ def render_section_header(title, description=None):
         
     html_string += '</div>'
     st.markdown(html_string, unsafe_allow_html=True)
+    

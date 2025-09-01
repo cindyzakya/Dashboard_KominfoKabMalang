@@ -165,15 +165,35 @@ def main():
     col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
-        create_kpi_card("Total Kasus Stunting", f"{total_stunting:,}", "👶")
+        create_kpi_card(
+            title="Total Kasus Stunting", 
+            value=f"{total_stunting:,}", 
+            icon="👶"
+        )
     with col2:
-        create_kpi_card("Total Anak Diukur", f"{total_diukur:,}", "📏")
+        create_kpi_card(
+            title="Total Anak Diukur", 
+            value=f"{total_diukur:,}", 
+            icon="📏"
+        )
     with col3:
-        create_kpi_card("Rata-rata Prevalensi", f"{avg_prevalensi:.2f}%", "📊")
+        create_kpi_card(
+            title="Rata-rata Prevalensi", 
+            value=f"{avg_prevalensi:.2f}%", 
+            icon="📊"
+        )
     with col4:
-        create_kpi_card("Total Puskesmas", f"{total_puskesmas:,}", "🏥")
+        create_kpi_card(
+            title="Total Puskesmas", 
+            value=f"{total_puskesmas:,}", 
+            icon="🏥"
+        )
     with col5:
-        create_kpi_card("Total Rumah Sakit", f"{total_rs:,}", "🏨")
+        create_kpi_card(
+            title="Total Rumah Sakit", 
+            value=f"{total_rs:,}", 
+            icon="🏨"
+            )
 
     # Map Section
     render_section_header("🗺️ Peta Sebaran Indikator per Kecamatan")

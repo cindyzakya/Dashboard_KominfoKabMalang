@@ -156,3 +156,157 @@ def normalize_data(df, columns, method='min-max'):
                     df_norm[col] = (df_norm[col] - mean_val) / std_val
     
     return df_norm
+
+def prepare_disaster_data_for_map(data, selected_years):
+    """Prepare disaster data for mapping"""
+    try:
+        if 'Bencana Alam' not in data:
+            return None
+        
+        df = data['Bencana Alam'].copy()
+        
+        kecamatan_col = None
+        jumlah_col = None
+        tahun_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'kecamatan' in col_lower:
+                kecamatan_col = col
+            elif 'tahun' in col_lower:
+                tahun_col = col
+            elif any(word in col_lower for word in ['jumlah', 'bencana']) and df[col].dtype in ['int64', 'float64']:
+                jumlah_col = col
+        
+        if not kecamatan_col:
+            return None
+        
+        if tahun_col and "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        if jumlah_col:
+            map_data = df.groupby(kecamatan_col)[jumlah_col].sum().reset_index()
+            map_data.columns = ['Kecamatan', 'Total_Bencana']
+        else:
+            map_data = df[kecamatan_col].value_counts().reset_index()
+            map_data.columns = ['Kecamatan', 'Total_Bencana']
+        
+        map_data['Kecamatan'] = map_data['Kecamatan'].str.strip().str.title()
+        return map_data
+        
+    except Exception as e:
+        return None
+
+def prepare_bantuan_sosial_data_for_map(data, selected_years):
+    """Prepare bantuan sosial data for mapping"""
+    try:
+        if 'Bantuan Sosial' not in data:
+            return None
+        
+        df = data['Bantuan Sosial'].copy()
+        
+        kecamatan_col = None
+        penerima_col = None
+        tahun_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'kecamatan' in col_lower:
+                kecamatan_col = col
+            elif 'penerima' in col_lower:
+                penerima_col = col
+            elif 'tahun' in col_lower:
+                tahun_col = col
+        
+        if not all([kecamatan_col, penerima_col]):
+            return None
+        
+        if tahun_col and "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        map_data = df.groupby(kecamatan_col)[penerima_col].sum().reset_index()
+        map_data.columns = ['Kecamatan', 'Total_Penerima']
+        
+        map_data['Kecamatan'] = map_data['Kecamatan'].str.strip().str.title()
+        return map_data
+        
+    except Exception as e:
+        return None
+
+def prepare_kb_performance_data_for_map(data):
+    """Prepare KB performance data for mapping - DIPERBAIKI"""
+    try:
+        if 'Data Kb Performance' not in data:
+            return None
+        
+        df = data['Data Kb Performance'].copy()
+        
+        kecamatan_col = None
+        growth_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'kecamatan' in col_lower:
+                kecamatan_col = col
+            elif 'growth' in col_lower and '2024' in col_lower and '2023' in col_lower:
+                growth_col = col
+                break
+        
+        if not all([kecamatan_col, growth_col]):
+            return None
+        
+        # Clean growth data - PERBAIKAN UTAMA
+        df_clean = df.copy()
+        if df_clean[growth_col].dtype == 'object':
+            # Remove % and convert to numeric
+            df_clean['Growth_Rate_Numeric'] = df_clean[growth_col].astype(str).str.replace('%', '').str.replace(',', '.').str.strip()
+            df_clean['Growth_Rate_Numeric'] = pd.to_numeric(df_clean['Growth_Rate_Numeric'], errors='coerce')
+            numeric_col = 'Growth_Rate_Numeric'
+        else:
+            numeric_col = growth_col
+        
+        map_data = df_clean[[kecamatan_col, numeric_col]].copy()
+        map_data.columns = ['Kecamatan', 'Growth_Rate']
+        map_data = map_data.dropna()
+        
+        map_data['Kecamatan'] = map_data['Kecamatan'].str.strip().str.title()
+        return map_data
+        
+    except Exception as e:
+        return None
+
+def prepare_peserta_kb_data_for_map(data, selected_years):
+    """Prepare peserta KB data for mapping"""
+    try:
+        if 'Peserta Kb' not in data:
+            return None
+        
+        df = data['Peserta Kb'].copy()
+        
+        kecamatan_col = None
+        peserta_col = None
+        tahun_col = None
+        
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'kecamatan' in col_lower:
+                kecamatan_col = col
+            elif 'peserta' in col_lower:
+                peserta_col = col
+            elif 'tahun' in col_lower:
+                tahun_col = col
+        
+        if not all([kecamatan_col, peserta_col]):
+            return None
+        
+        if tahun_col and "Semua Tahun" not in selected_years:
+            df = df[df[tahun_col].isin(selected_years)]
+        
+        map_data = df.groupby(kecamatan_col)[peserta_col].sum().reset_index()
+        map_data.columns = ['Kecamatan', 'Total_Peserta']
+        
+        map_data['Kecamatan'] = map_data['Kecamatan'].str.strip().str.title()
+        return map_data
+        
+    except Exception as e:
+        return None

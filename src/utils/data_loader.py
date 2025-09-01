@@ -101,8 +101,6 @@ def load_sosial_data():
         "data_kb_tren_metode.csv",
         "jenis_bencana.csv",
         "kekerasan_anak.csv",
-        "master_kecamatan.csv",
-        "master_tahun.csv",
         "peserta_kb.csv",
         "usia_kekerasan_perempuan.csv"
     ]

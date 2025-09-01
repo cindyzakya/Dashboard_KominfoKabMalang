@@ -10,7 +10,7 @@ def load_main_css():
     <style>
         /* HOME PAGE CSS */
         .main-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2a89a6 0%, #574249 100%);
             color: white;
             padding: 40px 20px;
             border-radius: 20px;
@@ -59,7 +59,7 @@ def load_main_css():
         }
         
         .stats-container {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: linear-gradient(135deg, #e4acac 0%, #c85a5a 100%);
             color: white;
             padding: 30px;
             border-radius: 15px;
@@ -163,7 +163,7 @@ def load_kesehatan_css():
             padding: 1rem 1rem;
             border-radius: 7px;
             margin-top: 1.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
             border-left: 5px solid #2a89a6;
         }
         .section-header h2 {
@@ -513,7 +513,7 @@ def load_pendidikan_css():
             padding: 1rem 1rem;
             border-radius: 7px;
             margin-top: 1.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
             border-left: 5px solid #62718c; /* Aksen warna biru */
         }
         .section-header h2 {
@@ -711,7 +711,7 @@ def load_sosial_css():
             padding: 1rem 1.5rem 1rem 1rem;
             border-radius: 7px;
             margin-top: 1.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
             border-left: 5px solid #1e3c72;
         }
         .section-header h2 {
@@ -766,21 +766,27 @@ def load_sosial_css():
         }
         
         /* KPI Box Style */
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* Selalu 5 kolom */
+            gap: 1rem;
+            align-items: stretch; /* Biar tinggi box sama */
+        }
+
         .kpi-box {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            flex: 1;
+            background-color: #1e3c72;
             color: white;
             padding: 1rem;
             border-radius: 10px;
             text-align: center;
-            min-height: 185px;
-            height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             transition: transform 0.2s;
-            word-wrap: break-word; /* kalau angka panjang, bisa turun ke bawah */
+            word-wrap: break-word;
         }
         .kpi-box:hover {
             transform: scale(1.03);
@@ -887,18 +893,6 @@ def load_sosial_css():
             min-height: 50px;
             border: 1px dashed rgba(255, 255, 255, 0.3);
             margin-bottom: 15px;
-        }
-        
-        /* Chart Explanation */
-        .chart-explanation {
-            background: linear-gradient(135deg, #e8f4fd 0%, #d6eaf8 100%);
-            border-left: 4px solid #3498db;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 5px;
-            font-style: italic;
-            color: #2c3e50;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         /* FILTER PETA */

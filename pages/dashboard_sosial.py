@@ -6,8 +6,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import folium
-from streamlit_folium import st_folium
 import sys
 from pathlib import Path
 
@@ -16,12 +14,12 @@ sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from config import *
 from src.components.layouts import render_dashboard_header, render_section_header
-from src.components.cards import create_kpi_card
-from src.components.filters import create_year_filter
-from src.components.maps import create_folium_map, add_markers_to_map
+from src.components.charts import create_penerima_per_tahun_chart, create_bantuan_donut_chart, create_jenis_bencana_pie_chart, create_bencana_kecamatan_chart, create_kekerasan_total_yearly_chart, create_kekerasan_gender_comparison_chart, create_kekerasan_perempuan_yearly_chart, create_kekerasan_perempuan_usia_chart, create_kontrasepsi_chart, create_kb_performance_table
+from src.components.cards import render_kpi_cards
+from src.components.maps import render_interactive_map, render_map_statistics, render_map_instructions
 from src.utils.data_loader import load_sosial_data
-from src.utils.sosial_analyzer import calculate_kpis, get_available_years
-from src.utils.data_processor import clean_numeric_columns, extract_rupiah_value
+from src.utils.data_processor import prepare_disaster_data_for_map, prepare_bantuan_sosial_data_for_map, prepare_kb_performance_data_for_map, prepare_peserta_kb_data_for_map
+from src.utils.sosial_analyzer import calculate_kpis, get_available_years, analyze_penerima_per_tahun, analyze_bantuan_donut, analyze_jenis_bencana_pie, analyze_bencana_kecamatan, analyze_kekerasan_total_yearly, analyze_kekerasan_gender_comparison, analyze_kekerasan_perempuan_yearly, analyze_kekerasan_perempuan_usia, analyze_kontrasepsi_chart, analyze_kb_performance_table
 from src.styles.main import load_sosial_css
 from src.config.constants import JENIS_BENCANA_MAPPING, KECAMATAN_COORDINATES
 
@@ -40,187 +38,6 @@ load_sosial_css()
 @st.cache_data
 def load_data():
     return load_sosial_data()
-
-# Chart creation functions
-def create_penerima_per_tahun_chart(data, selected_years):
-    """Create recipients per year chart"""
-    try:
-        if 'Bantuan Sosial' not in data:
-            return None
-        
-        df = data['Bantuan Sosial'].copy()
-        
-        tahun_col = None
-        penerima_col = None
-        
-        for col in df.columns:
-            col_lower = col.lower().strip()
-            if 'tahun' in col_lower:
-                tahun_col = col
-            elif 'penerima' in col_lower:
-                penerima_col = col
-        
-        if not all([tahun_col, penerima_col]):
-            return None
-        
-        if "Semua Tahun" not in selected_years:
-            df = df[df[tahun_col].isin(selected_years)]
-        
-        yearly_data = df.groupby(tahun_col)[penerima_col].agg(['sum', 'mean']).reset_index()
-        yearly_data.columns = [tahun_col, 'Total_Penerima', 'Rata_rata_Penerima']
-        
-        fig = go.Figure()
-        
-        fig.add_trace(go.Bar(
-            x=yearly_data[tahun_col],
-            y=yearly_data['Total_Penerima'],
-            name='Total Penerima',
-            marker_color='#3498db',
-            yaxis='y'
-        ))
-        
-        fig.add_trace(go.Scatter(
-            x=yearly_data[tahun_col],
-            y=yearly_data['Rata_rata_Penerima'],
-            mode='lines+markers',
-            name='Rata-rata Penerima',
-            line=dict(color='#e74c3c', width=3),
-            marker=dict(size=8),
-            yaxis='y2'
-        ))
-        
-        fig.update_layout(
-            title='Rata-rata dan Jumlah Penerima per Tahun',
-            xaxis_title='Tahun',
-            yaxis=dict(title='Total Penerima', side='left'),
-            yaxis2=dict(title='Rata-rata Penerima', side='right', overlaying='y'),
-            height=400,
-            legend=dict(x=0, y=1)
-        )
-        
-        return fig
-        
-    except Exception as e:
-        return None
-
-def create_bantuan_donut_chart(data, selected_years):
-    """Create social assistance donut chart"""
-    try:
-        if 'Bantuan Sosial' not in data:
-            return None
-        
-        df = data['Bantuan Sosial'].copy()
-        
-        program_col = None
-        penerima_col = None
-        tahun_col = None
-        
-        for col in df.columns:
-            col_lower = col.lower().strip()
-            if 'program' in col_lower and 'type' in col_lower:
-                program_col = col
-            elif 'penerima' in col_lower:
-                penerima_col = col
-            elif 'tahun' in col_lower:
-                tahun_col = col
-        
-        if not all([program_col, penerima_col]):
-            return None
-        
-        if tahun_col and "Semua Tahun" not in selected_years:
-            df = df[df[tahun_col].isin(selected_years)]
-        
-        chart_data = df.groupby(program_col)[penerima_col].sum().reset_index()
-        
-        fig = px.pie(
-            chart_data,
-            values=penerima_col,
-            names=program_col,
-            title="Distribusi Penerima Bantuan per Program",
-            hole=0.4,
-            color_discrete_sequence=['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']
-        )
-        
-        fig.update_traces(
-            textposition='inside',
-            textinfo='percent+label',
-            hovertemplate='<b>%{label}</b><br>Jumlah: %{value:,.0f}<br>Persentase: %{percent}<br><extra></extra>'
-        )
-        
-        fig.update_layout(height=400)
-        return fig
-        
-    except Exception as e:
-        return None
-
-def create_jenis_bencana_pie_chart(data, selected_years):
-    """Create disaster type pie chart"""
-    try:
-        if 'Jenis Bencana' not in data:
-            return None
-        
-        df = data['Jenis Bencana'].copy()
-        
-        if 'Jenis_Bencana_Nama' in df.columns:
-            jenis_col = 'Jenis_Bencana_Nama'
-        else:
-            if 'Jenis_Bencana' in df.columns:
-                df['Jenis_Bencana_Display'] = df['Jenis_Bencana'].astype(str).str.replace('_', ' ').str.title()
-                jenis_col = 'Jenis_Bencana_Display'
-            else:
-                return None
-        
-        jumlah_col = None
-        for col in df.columns:
-            if 'jumlah' in col.lower() and df[col].dtype in ['int64', 'float64']:
-                jumlah_col = col
-                break
-        
-        if not jumlah_col:
-            return None
-        
-        tahun_col = None
-        for col in df.columns:
-            if 'tahun' in col.lower():
-                tahun_col = col
-                break
-        
-        if tahun_col and "Semua Tahun" not in selected_years:
-            df_filtered = df[df[tahun_col].isin(selected_years)]
-        else:
-            df_filtered = df
-        
-        if df_filtered.empty:
-            return None
-        
-        chart_data = df_filtered.groupby(jenis_col)[jumlah_col].sum().reset_index()
-        chart_data = chart_data[chart_data[jumlah_col] > 0]
-        
-        if chart_data.empty:
-            return None
-        
-        fig = px.pie(
-            chart_data,
-            values=jumlah_col,
-            names=jenis_col,
-            title="Distribusi Jenis Bencana",
-            color_discrete_sequence=[
-                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
-                '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'
-            ]
-        )
-        
-        fig.update_traces(
-            textposition='inside', 
-            textinfo='percent+label',
-            hovertemplate='<b>%{label}</b><br>Jumlah: %{value}<br>Persentase: %{percent}<br><extra></extra>'
-        )
-        
-        fig.update_layout(height=500)
-        return fig
-        
-    except Exception as e:
-        return None
 
 def create_year_chips(available_years, key):
     """Create chip-style year selection"""
@@ -319,13 +136,6 @@ def main():
         selected_years = create_year_chips(available_years, "main")
         
         st.markdown("</div>", unsafe_allow_html=True)
-        
-        st.markdown("---")
-        st.markdown("""
-        <div style="background-color: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-            <h4 style="color: white; margin: 0;">📋 Main Menu</h4>
-        </div>
-        """, unsafe_allow_html=True)
 
     # Header
     render_dashboard_header(
@@ -338,86 +148,26 @@ def main():
         # Calculate KPIs
         kpis = calculate_kpis(data, selected_years)
         
-        # Display KPIs
-        st.markdown("""
-        <div class="kpi-section">
-            <h3>📊 Indikator Utama Sosial</h3>
-        """, unsafe_allow_html=True)
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        with col1:
-            value = int(kpis.get('total_penerima_bantuan', 0))
-            st.markdown(f"""
-            <div class="accurate-card">
-                <h4>👥 Total Penerima Bantuan</h4>
-                <h2>{value:,}</h2>
-                <p>{value} Orang</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            value = int(kpis.get('total_bencana', 0))
-            st.markdown(f"""
-            <div class="accurate-card">
-                <h4>🌊 Total Bencana</h4>
-                <h2>{value:,}</h2>
-                <p>{value} Kejadian</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            value = int(kpis.get('kekerasan_anak', 0))
-            st.markdown(f"""
-            <div class="accurate-card">
-                <h4>👶 Kekerasan Anak</h4>
-                <h2>{value:,}</h2>
-                <p>{value} Kasus</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col4:
-            value = int(kpis.get('kekerasan_perempuan', 0))
-            st.markdown(f"""
-            <div class="accurate-card">
-                <h4>👩 Kekerasan Perempuan</h4>
-                <h2>{value:,}</h2>
-                <p>{value} Kasus</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col5:
-            value = int(kpis.get('peserta_kb', 0))
-            st.markdown(f"""
-            <div class="accurate-card">
-                <h4>👶 Peserta KB</h4>
-                <h2>{value:,}</h2>
-                <p>{value} Orang</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+        # KPI Section
+        render_section_header("📊  Indikator Utama Stunting")
 
-        # Interactive Map Section
-        st.markdown("""
-        <div class="map-container">
-            <div class="map-header">
-                <h2>🗺️ PETA INTERAKTIF KABUPATEN MALANG</h2>
-                <p><em>Visualisasi data sosial per kecamatan berdasarkan berbagai indikator</em></p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Map filter
-        st.markdown("""
-        <div class="map-filter-container">
-            <h4 class="map-filter-header">🎯 Pilih Jenis Data untuk Visualisasi Peta</h4>
-        """, unsafe_allow_html=True)
+        render_kpi_cards([
+            ("👥", "Total Penerima Bantuan", f"{kpis.get('total_penerima_bantuan', 0):,}", "Orang"),
+            ("🌊", "Total Bencana", f"{kpis.get('total_bencana', 0):,}", "Kejadian"),
+            ("👶", "Kekerasan Anak", f"{kpis.get('kekerasan_anak', 0):,}", "Kasus"),
+            ("👩", "Kekerasan Perempuan", f"{kpis.get('kekerasan_perempuan', 0):,}", "Kasus"),
+            ("👨‍👩‍👧‍👦", "Peserta KB", f"{kpis.get('peserta_kb', 0):,}", "Orang"),
+        ])
+
+
+        # Map Section
+        render_section_header("🗺️ Peta Interaktif Indikator Sosial per Kecamatan")
         
         filter_col1, filter_col2 = st.columns([2, 3])
         
         with filter_col1:
             map_type = st.selectbox(
-                "📊 Jenis Data:",
+                "Pilih Jenis Data:",
                 ["Bencana Alam", "Bantuan Sosial", "KB Performance", "Peserta KB"],
                 key="map_type_selector",
                 help="Pilih jenis data yang ingin ditampilkan pada peta"
@@ -447,28 +197,31 @@ def main():
         
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # Create simple folium map (placeholder for now)
-        center_lat = -8.0710
-        center_lon = 112.6333
-        
-        m = folium.Map(
-            location=[center_lat, center_lon],
-            zoom_start=10,
-            tiles='OpenStreetMap',
-            width='100%',
-            height='500px'
-        )
-        
-        # Display map
-        map_data_result = st_folium(m, width='100%', height=500)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+        # Tentukan map_data berdasarkan map_type
+            
+        if map_type == "Bencana Alam":
+            map_data = prepare_disaster_data_for_map(data, selected_years)
+        elif map_type == "Bantuan Sosial":
+            map_data = prepare_bantuan_sosial_data_for_map(data, selected_years)
+        elif map_type == "KB Performance":
+            map_data = prepare_kb_performance_data_for_map(data)
+        elif map_type == "Peserta KB":
+            map_data = prepare_peserta_kb_data_for_map(data, selected_years)
+        else:
+            map_data = None
+
+        interactive_map = render_interactive_map(map_data, map_type, selected_years, height=600)
+
+        if interactive_map:
+            render_map_statistics(map_data, map_type, selected_years)
+            render_map_instructions()
+
 
         # Section 1: Bantuan Sosial
         st.markdown("""
         <div class="section-container">
             <div class="section-header">
-                <h2>👥 BANTUAN SOSIAL</h2>
+                <h2>👥 Bantuan Sosial</h2>
             </div>
         """, unsafe_allow_html=True)
         
@@ -478,11 +231,8 @@ def main():
             chart = create_penerima_per_tahun_chart(data, selected_years)
             if chart:
                 st.plotly_chart(chart, use_container_width=True)
-                st.markdown(f"""
-                <div class="chart-explanation">
-                    📊 <strong>Hasil Analisis:</strong> Grafik menunjukkan tren penerima bantuan sosial per tahun dengan perbandingan total dan rata-rata penerima.
-                </div>
-                """, unsafe_allow_html=True)
+                analysis = analyze_penerima_per_tahun(data, selected_years)
+                st.info(f"**Hasil Analisis:** {analysis}")
             else:
                 st.info("📊 Data Penerima per Tahun tidak tersedia")
         
@@ -490,11 +240,8 @@ def main():
             chart = create_bantuan_donut_chart(data, selected_years)
             if chart:
                 st.plotly_chart(chart, use_container_width=True)
-                st.markdown(f"""
-                <div class="chart-explanation">
-                    🍩 <strong>Hasil Analisis:</strong> Distribusi penerima bantuan menunjukkan proporsi setiap program bantuan sosial.
-                </div>
-                """, unsafe_allow_html=True)
+                analysis = analyze_bantuan_donut(data, selected_years)
+                st.info(f"**Hasil Analisis:** {analysis}")
             else:
                 st.info("📊 Data Bantuan tidak tersedia")
         
@@ -504,7 +251,7 @@ def main():
         st.markdown("""
         <div class="section-container">
             <div class="section-header">
-                <h2>🌊 BENCANA ALAM</h2>
+                <h2>🌊 Bencana Alam</h2>
             </div>
         """, unsafe_allow_html=True)
         
@@ -514,35 +261,112 @@ def main():
             chart = create_jenis_bencana_pie_chart(data, selected_years)
             if chart:
                 st.plotly_chart(chart, use_container_width=True)
-                st.markdown(f"""
-                <div class="chart-explanation">
-                    🥧 <strong>Hasil Analisis:</strong> Distribusi jenis bencana menunjukkan tipe bencana yang paling sering terjadi di Kabupaten Malang.
-                </div>
-                """, unsafe_allow_html=True)
+                analysis = analyze_jenis_bencana_pie(data, selected_years)
+                st.info(f"**Hasil Analisis:** {analysis}")
             else:
                 st.info("📊 Data Jenis Bencana tidak tersedia")
         
         with col2:
-            st.info("📊 Chart bencana per kecamatan akan ditambahkan")
+            chart = create_bencana_kecamatan_chart(data, selected_years)
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
+                analysis = analyze_bencana_kecamatan(data, selected_years)
+                st.info(f"**Hasil Analisis:** {analysis}")
+            else:
+                st.info("📊 Data Bencana per Kecamatan tidak tersedia")
+        
+        
+        
+        
+        # Section 3: Kekerasan
+        st.markdown("""
+        <div class="section-container">
+            <div class="section-header">
+                <h2>⚠️ Kekerasan</h2>
+            </div>
+        """, unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            chart = create_kekerasan_total_yearly_chart(data, selected_years)
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
+                # Analysis for kekerasan total yearly
+                analysis = analyze_kekerasan_total_yearly(data, selected_years)
+                st.info(f"**Hasil Analisis:** {analysis}")
+            else:
+                st.info("📊 Data Total Kekerasan tidak tersedia")
+        
+        with col2:
+            chart = create_kekerasan_gender_comparison_chart(data, selected_years)
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
+                # Analysis for kekerasan gender comparison
+                analysis = analyze_kekerasan_gender_comparison(data, selected_years)
+                st.info(f"**Hasil Analisis:** {analysis}")
+            else:
+                st.info("📊 Data Kekerasan berdasarkan Gender tidak tersedia")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            chart = create_kekerasan_perempuan_yearly_chart(data, selected_years)
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
+                # Analysis for kekerasan perempuan yearly
+                analysis = analyze_kekerasan_perempuan_yearly(data, selected_years)
+                st.info(f"**Hasil Analisis:** {analysis}")
+            else:
+                st.info("📊 Data Kekerasan Perempuan tidak tersedia")
+        
+        with col2:
+            chart = create_kekerasan_perempuan_usia_chart(data, selected_years)
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
+                # Analysis for kekerasan perempuan usia
+                analysis = analyze_kekerasan_perempuan_usia(data, selected_years)
+                st.info(f"**Hasil Analisis:** {analysis}")
+            else:
+                st.info("📊 Data Kekerasan berdasarkan Usia tidak tersedia")
+
+        # Section 4: Keluarga Berencana (KB)
+        st.markdown("""
+        <div class="section-container">
+            <div class="section-header">
+                <h2>👶 Keluarga Berencana (KB)</h2>
+            </div>
+        """, unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            chart = create_kontrasepsi_chart(data, selected_years)
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
+                # Analysis for kontrasepsi
+                analysis = analyze_kontrasepsi_chart(data, selected_years)
+                st.info(f"**Hasil Analisis:** {analysis}")
+            else:
+                st.info("📊 Data Kontrasepsi tidak tersedia")
+        
+        with col2:
+            st.markdown("#### 📈 Performa KB Kecamatan 2023-2024")
+            table = create_kb_performance_table(data)
+            if table is not None and not table.empty:
+                st.dataframe(table, use_container_width=True, hide_index=True, height=400)
+                # Analysis for KB performance table
+                analysis = analyze_kb_performance_table(data)
+                st.info(f"**Hasil Analisis:** {analysis}")
+            else:
+                st.info("📊 Data Performa KB tidak tersedia")
         
         st.markdown("</div>", unsafe_allow_html=True)
+
 
         # Display active filters info
         st.markdown("---")
         st.markdown("### 🎯 Active Filter")
         st.info(f"📅 **Tahun:** {', '.join(map(str, selected_years))}")
         
-        # Footer
-        from datetime import datetime
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        st.markdown(f"""
-        ---
-        <div style='text-align: center; padding: 15px; background-color: #f0f2f6; border-radius: 10px;'>
-            <p><strong>📊 Dashboard Sosial Kabupaten Malang</strong></p>
-            <p><strong>🔗 Data Source:</strong> Local CSV Files | <strong>🕒 Generated:</strong> {current_time}</p>
-            <p><strong>💡 Insight:</strong> Dashboard ini menyediakan visualisasi data sosial untuk mendukung pengambilan keputusan (Periode 2020-2024)</p>
-        </div>
-        """, unsafe_allow_html=True)
     
     except Exception as e:
         st.error(f"❌ Terjadi kesalahan dalam memuat dashboard: {str(e)}")

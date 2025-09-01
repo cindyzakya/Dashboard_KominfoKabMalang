@@ -12,7 +12,7 @@ sys.path.append(str(Path(__file__).parent / "src"))
 # Import dengan error handling
 try:
     from config import *
-    from src.components.layouts import setup_page_config, render_main_header, render_footer
+    from src.components.layouts import render_main_header, render_footer
     from src.components.cards import create_dashboard_card
     from src.utils.helpers import check_file_exists
     from src.styles.main import load_main_css
