@@ -606,8 +606,8 @@ def create_kb_performance_table(data):
         if len(display_cols) < 2:
             display_cols = df.columns.tolist()[:min(5, len(df.columns))]
         
-        # Limit to reasonable number of rows and columns
-        table_data = df[display_cols].head(20)
+        # Menampilkan semua baris data, tidak dibatasi
+        table_data = df[display_cols]
         
         # Clean the data - replace NaN with appropriate values
         table_data = table_data.fillna('-').reset_index(drop=True)
