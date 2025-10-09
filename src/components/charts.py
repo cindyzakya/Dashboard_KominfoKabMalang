@@ -469,11 +469,11 @@ def create_kekerasan_perempuan_yearly_chart(data, selected_years):
             markers=True,
             line_shape='linear',
             color_discrete_map={
-                'Fisik': '#d64541',        # merah tegas tapi tetap elegan
-                'Lainnya': '#e67e73',      # coral, lebih terang & jelas
-                'Penelantaran': '#8e5c9c', # ungu medium, lebih kontras daripada abu-ungu
-                'Psikis': '#3f88c5',       # biru terang tapi kalem
-                'Seksual': '#2ca25f'       # hijau emerald (segar tapi nggak norak)
+                'Fisik': '#d64541',        
+                'Lainnya': '#e67e73',      
+                'Penelantaran': '#8e5c9c', 
+                'Psikis': '#3f88c5',       
+                'Seksual': '#2ca25f'       
             }
         )
         

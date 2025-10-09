@@ -275,9 +275,6 @@ def main():
             else:
                 st.info("📊 Data Bencana per Kecamatan tidak tersedia")
         
-        
-        
-        
         # Section 3: Kekerasan
         st.markdown("""
         <div class="section-container">
