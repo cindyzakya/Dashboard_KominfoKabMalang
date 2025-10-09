@@ -1,16 +1,19 @@
 # 📊 Satu Data Kabupaten Malang – Dashboard Interaktif Pendidikan, Sosial, dan Kesehatan
+
 Proyek ini merupakan **Proyek Praktik Kerja Lapangan (PKL) di Dinas Komunikasi dan Informatika (KOMINFO) Kabupaten Malang**. Proyek ini bertujuan untuk membuat **dashboard interaktif berbasis Python Streamlit** yang menyajikan data sektor pendidikan, sosial, dan kesehatan Kabupaten Malang secara visual dan mudah dipahami. Dashboard ini dibuat untuk memudahkan analisis dan visualisasi data publik, sehingga dapat digunakan untuk pengambilan keputusan berbasis data.
 
 ---
 
 ## 📌 Tujuan
-* Menyajikan data pendidikan, sosial, dan kesehatan Kabupaten Malang dalam bentuk visual yang informatif.
-* Mendukung pengambilan keputusan berbasis data.
-* Meningkatkan transparansi dan keterbukaan informasi publik.
+
+- Menyajikan data pendidikan, sosial, dan kesehatan Kabupaten Malang dalam bentuk visual yang informatif.
+- Mendukung pengambilan keputusan berbasis data.
+- Meningkatkan transparansi dan keterbukaan informasi publik.
 
 ---
 
 ## 📁 Struktur Dataset
+
 Data diambil dari **Website Kabupaten Malang Satu Data (KAMASUTA)** dan dikelompokkan berdasarkan sektor:
 
 ```
@@ -37,14 +40,16 @@ data/
 ---
 
 ## ⚙️ Teknologi yang Digunakan
-* **Python 3**
-* **Streamlit** → Pembuatan dashboard interaktif
-* **Pandas** → Pengolahan data
-* **Plotly / Matplotlib / Seaborn** → Visualisasi data
+
+- **Python 3**
+- **Streamlit** → Pembuatan dashboard interaktif
+- **Pandas** → Pengolahan data
+- **Plotly & Folium** → Visualisasi data
 
 ---
 
 ## 🚀 Cara Menjalankan
+
 1. **Clone repository ini**
 
 ```bash
@@ -67,17 +72,20 @@ streamlit run app.py
 ---
 
 ## 🌐 Integrasi ke Website Resmi
+
 Dashboard ini dapat diintegrasikan (**embed**) ke dalam website resmi Dinas Kominfo Kabupaten Malang sehingga data bisa diakses langsung oleh publik.
 
 ---
 
 ## 📤 Output
-* Dashboard interaktif menampilkan visualisasi data sektor pendidikan, sosial, dan kesehatan.
-* Pengguna dapat mengeksplorasi dataset melalui grafik, tabel, dan filter interaktif.
+
+- Dashboard interaktif menampilkan visualisasi data sektor pendidikan, sosial, dan kesehatan.
+- Pengguna dapat mengeksplorasi dataset melalui grafik, tabel, dan filter interaktif.
 
 ---
 
 ## 👨‍💻 Tim Pengembang
+
 - `@rosaaurelia`
 - `@cindyzakya`
 - `@anitamds`
@@ -85,9 +93,11 @@ Dashboard ini dapat diintegrasikan (**embed**) ke dalam website resmi Dinas Komi
 ---
 
 ## 📝 Lisensi
+
 Proyek ini dibuat untuk tujuan edukasi dan publikasi data terbuka. Dataset berasal dari **Kabupaten Malang Satu Data (KAMASUTA)** yang digunakan untuk analisis dan visualisasi data publik.
 
 ---
 
 ## 📧 Kontak
+
 Email: [rosarioaurelia09@gmail.com](mailto:rosarioaurelia09@gmail.com)

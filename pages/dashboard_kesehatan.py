@@ -1,5 +1,5 @@
 """
-Dashboard Kesehatan - Modular Version
+Dashboard Kesehatan
 """
 
 import streamlit as st
@@ -8,7 +8,6 @@ import geopandas as gpd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import json
 import sys
 from pathlib import Path
 
@@ -251,7 +250,6 @@ def main():
                 hover_name="kecamatan",
             )
 
-            # ===== Tambahkan label kecamatan di atas polygon =====
             try:
                 # Load the geojson as a GeoDataFrame to calculate centroids for labels
                 gdf_kec = gpd.read_file(GEO_DATA_PATH / "35.07_kecamatan.geojson")
@@ -436,6 +434,73 @@ def main():
                     st.markdown(comparison_text, unsafe_allow_html=True)
                 else:
                     st.info("Data hanya tersedia untuk satu tahun.")
+        
+        elif trend_type_general == "Per Periode":
+            # Monthly trend
+            monthly_map = {
+                'Januari': 1, 'Februari': 2, 'Maret': 3, 'April': 4, 'Mei': 5, 'Juni': 6,
+                'Juli': 7, 'Agustus': 8, 'September': 9, 'Oktober': 10, 'November': 11, 'Desember': 12
+            }
+            
+            period_trend = filtered_df.copy()
+            period_trend['month_num'] = period_trend['Bulan'].map(monthly_map)
+            period_trend = period_trend.sort_values(['Tahun', 'month_num'])
+            
+            period_trend_agg = period_trend.groupby(['Tahun', 'Bulan', 'month_num']).agg({
+                'Prevalensi Stunting Persen': 'mean'
+            }).reset_index()
+            
+            period_trend_agg['Periode'] = period_trend_agg['Tahun'].astype(str) + '-' + period_trend_agg['Bulan'].str.slice(0, 3)
+            
+            col1, col2 = st.columns([2, 1])
+
+            with col1:
+                fig_period_trend = go.Figure()
+                
+                fig_period_trend.add_trace(go.Scatter(
+                    x=period_trend_agg['Periode'],
+                    y=period_trend_agg['Prevalensi Stunting Persen'],
+                    mode='lines+markers',
+                    name='Prevalensi per Periode',
+                    line=dict(width=3, color='#2a89a6'),
+                    marker=dict(size=8),
+                ))
+                
+                fig_period_trend.update_layout(
+                    title='Tren Stunting per Periode (Bulan)',
+                    xaxis_title="Periode",
+                    yaxis_title="Persentase Stunting (%)",
+                    height=500,
+                    xaxis_tickangle=-45
+                )
+                
+                st.plotly_chart(fig_period_trend, use_container_width=True)
+
+            with col2:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if len(period_trend_agg) > 1:
+                    trend_change = period_trend_agg.iloc[-1]['Prevalensi Stunting Persen'] - period_trend_agg.iloc[0]['Prevalensi Stunting Persen']
+                    best_period_row = period_trend_agg.loc[period_trend_agg['Prevalensi Stunting Persen'].idxmin()]
+                    worst_period_row = period_trend_agg.loc[period_trend_agg['Prevalensi Stunting Persen'].idxmax()]
+                    
+                    if abs(trend_change) < 0.5:
+                        st.markdown('<div class="custom-alert custom-alert-info">📊 <strong>Stabil:</strong> Perubahan minimal dari awal hingga akhir periode.</div>', unsafe_allow_html=True)
+                    elif trend_change < 0:
+                        st.markdown('<div class="custom-alert custom-alert-success">✅ <strong>Membaik:</strong> Terjadi penurunan stunting secara keseluruhan.</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="custom-alert custom-alert-warning">⚠️ <strong>Perlu Perhatian:</strong> Terjadi peningkatan stunting secara keseluruhan.</div>', unsafe_allow_html=True)
+
+                    st.markdown('<hr class="custom-hr">', unsafe_allow_html=True)
+                    comparison_text = f"""
+                    ℹ️ **Detail Perkembangan per Periode:**<br>
+                    - Perubahan: {trend_change:+.1f}% ({period_trend_agg.iloc[0]['Periode']} → {period_trend_agg.iloc[-1]['Periode']})<br>
+                    - Periode terbaik: **{best_period_row['Periode']}** ({best_period_row['Prevalensi Stunting Persen']:.1f}%)<br>
+                    - Periode terburuk: **{worst_period_row['Periode']}** ({worst_period_row['Prevalensi Stunting Persen']:.1f}%)
+                    """
+                    st.markdown(comparison_text, unsafe_allow_html=True)
+                else:
+                    st.info("Data hanya tersedia untuk satu periode.")
+        
 
     with tab2:
         # Single district trend
@@ -502,11 +567,54 @@ def main():
                             st.markdown('<div class="custom-alert custom-alert-info">📊 <strong>Tren Stabil:</strong> Perubahan minimal.</div>', unsafe_allow_html=True)
                     else:
                         st.info("Data hanya tersedia untuk satu tahun.")
+            
+            elif trend_type_kec == "Per Periode":
+                monthly_map = {
+                    'Januari': 1, 'Februari': 2, 'Maret': 3, 'April': 4, 'Mei': 5, 'Juni': 6,
+                    'Juli': 7, 'Agustus': 8, 'September': 9, 'Oktober': 10, 'November': 11, 'Desember': 12
+                }
+                
+                period_single_trend = single_kec_df.copy()
+                period_single_trend['month_num'] = period_single_trend['Bulan'].map(monthly_map)
+                period_single_trend = period_single_trend.sort_values(['Tahun', 'month_num'])
+                
+                period_single_trend_agg = period_single_trend.groupby(['Tahun', 'Bulan', 'month_num']).agg({
+                    'Prevalensi Stunting Persen': 'mean'
+                }).reset_index()
+                
+                period_single_trend_agg['Periode'] = period_single_trend_agg['Tahun'].astype(str) + '-' + period_single_trend_agg['Bulan'].str.slice(0, 3)
+                
+                col1, col2 = st.columns([2, 1])
+
+                with col1:
+                    fig_single_period = go.Figure()
+                    
+                    fig_single_period.add_trace(go.Scatter(
+                        x=period_single_trend_agg['Periode'],
+                        y=period_single_trend_agg['Prevalensi Stunting Persen'],
+                        mode='lines+markers',
+                        name=f'{selected_kecamatan_single}',
+                        line=dict(width=3, color='#c85a5a'),
+                        marker=dict(size=8),
+                    ))
+                    
+                    fig_single_period.update_layout(
+                        title=f'Tren Stunting per Periode - {selected_kecamatan_single}',
+                        xaxis_title="Periode",
+                        yaxis_title="Persentase Stunting (%)",
+                        height=500,
+                        xaxis_tickangle=-45
+                    )
+                    
+                    st.plotly_chart(fig_single_period, use_container_width=True)
+
+                with col2:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.info(f"Menampilkan tren bulanan untuk **{selected_kecamatan_single}**. Gunakan grafik untuk melihat fluktuasi dari waktu ke waktu.")
 
     # Regional Comparison
     render_section_header("🗺️ Perbandingan Antar Wilayah")
 
-    # Use latest period data for consistency
     if latest_year and latest_month:
         distribution_df = filtered_df[
             (filtered_df['Tahun'] == latest_year) & 
@@ -581,14 +689,13 @@ def main():
     with col1:
         st.markdown("<h3 style='font-size: 18px; font-weight: bold;'>Distribusi Kecamatan Berdasarkan Kategori</h3>", unsafe_allow_html=True)
         
-        # definisikan palet warna sesuai tone peta
         pie_colors = ["#2a89a6", "#c85a5a", "#d1ecf2"]
 
         fig_pie = px.pie(
             values=kategori_counts.values,
             names=kategori_counts.index,
             color=kategori_counts.index,
-            color_discrete_sequence=pie_colors[:len(kategori_counts)]  # ambil sesuai jumlah kategori
+            color_discrete_sequence=pie_colors[:len(kategori_counts)] 
         )
         fig_pie.update_traces(textinfo='percent+label')
         st.plotly_chart(fig_pie, use_container_width=True)
