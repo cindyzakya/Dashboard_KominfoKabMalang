@@ -21,6 +21,7 @@ from src.components.layouts import render_dashboard_header, render_section_heade
 from src.components.cards import create_kpi_card, create_white_kpi_card
 from src.components.filters import create_year_filter, create_multiselect_filter
 from src.utils.data_loader import load_kesehatan_data, load_geojson_data
+from src.utils.data_processor import create_sorted_period_data
 from src.utils.kesehatan_analyzer import get_latest_period, analyze_prevalence_category, get_latest_facilities_data, create_correlation_analysis
 from src.styles.main import load_kesehatan_css
 
@@ -573,16 +574,16 @@ def main():
                     'Januari': 1, 'Februari': 2, 'Maret': 3, 'April': 4, 'Mei': 5, 'Juni': 6,
                     'Juli': 7, 'Agustus': 8, 'September': 9, 'Oktober': 10, 'November': 11, 'Desember': 12
                 }
-                
-                period_single_trend = single_kec_df.copy()
-                period_single_trend['month_num'] = period_single_trend['Bulan'].map(monthly_map)
-                period_single_trend = period_single_trend.sort_values(['Tahun', 'month_num'])
-                
-                period_single_trend_agg = period_single_trend.groupby(['Tahun', 'Bulan', 'month_num']).agg({
-                    'Prevalensi Stunting Persen': 'mean'
+
+                single_kec_df_sorted = create_sorted_period_data(single_kec_df.copy())
+            
+                period_single_trend = single_kec_df_sorted.groupby(['Tahun', 'Bulan', 'Periode', 'Month_Num']).agg({
+                    'Prevalensi Stunting Persen': 'mean',
+                    'Stunting': 'sum',
+                    'Jumlah Yang Diukur': 'sum',
                 }).reset_index()
                 
-                period_single_trend_agg['Periode'] = period_single_trend_agg['Tahun'].astype(str) + '-' + period_single_trend_agg['Bulan'].str.slice(0, 3)
+                period_single_trend = period_single_trend.sort_values(['Tahun', 'Month_Num']).reset_index(drop=True)
                 
                 col1, col2 = st.columns([2, 1])
 
@@ -590,8 +591,8 @@ def main():
                     fig_single_period = go.Figure()
                     
                     fig_single_period.add_trace(go.Scatter(
-                        x=period_single_trend_agg['Periode'],
-                        y=period_single_trend_agg['Prevalensi Stunting Persen'],
+                        x=period_single_trend['Periode'],
+                        y=period_single_trend['Prevalensi Stunting Persen'],
                         mode='lines+markers',
                         name=f'{selected_kecamatan_single}',
                         line=dict(width=3, color='#c85a5a'),
@@ -603,14 +604,42 @@ def main():
                         xaxis_title="Periode",
                         yaxis_title="Persentase Stunting (%)",
                         height=500,
-                        xaxis_tickangle=-45
+                        xaxis=dict(
+                            categoryorder='array',
+                            categoryarray=period_single_trend['Periode'].tolist()
+                        )
                     )
                     
                     st.plotly_chart(fig_single_period, use_container_width=True)
 
                 with col2:
                     st.markdown("<br>", unsafe_allow_html=True)
-                    st.info(f"Menampilkan tren bulanan untuk **{selected_kecamatan_single}**. Gunakan grafik untuk melihat fluktuasi dari waktu ke waktu.")
+                    if len(period_single_trend) > 1:
+                        highest_period_single = period_single_trend.loc[period_single_trend['Prevalensi Stunting Persen'].idxmax(), 'Periode']
+                        lowest_period_single = period_single_trend.loc[period_single_trend['Prevalensi Stunting Persen'].idxmin(), 'Periode']
+                        highest_prev_single = period_single_trend['Prevalensi Stunting Persen'].max()
+                        lowest_prev_single = period_single_trend['Prevalensi Stunting Persen'].min()
+                        range_period_single = highest_prev_single - lowest_prev_single
+                        
+                        if range_period_single > 5:
+                            st.markdown('', unsafe_allow_html=True)
+                        elif range_period_single > 2:
+                            st.markdown('<div class="custom-alert custom-alert-info">📊 <strong>Variasi Sedang:</strong> Fluktuasi normal antar periode.</div>', unsafe_allow_html=True)
+                        else:
+                            st.markdown('<div class="custom-alert custom-alert-success">✅ <strong>Konsisten:</strong> Variasi minimal antar periode.</div>', unsafe_allow_html=True)
+
+                        st.markdown('<hr class="custom-hr">', unsafe_allow_html=True)
+                        comparison_text = f"""
+                        ℹ️ **Detail untuk {selected_kecamatan_single}:**<br>
+                        - Rentang variasi: **{range_period_single:.1f}%**<br>
+                        - Periode terbaik: **{lowest_period_single}** ({lowest_prev_single:.1f}%)<br>
+                        - Periode terburuk: **{highest_period_single}** ({highest_prev_single:.1f}%)
+                        """
+                        st.markdown(comparison_text, unsafe_allow_html=True)
+                    else:
+                        st.info("Data hanya tersedia untuk satu periode.")
+
+                    
 
     # Regional Comparison
     render_section_header("🗺️ Perbandingan Antar Wilayah")
