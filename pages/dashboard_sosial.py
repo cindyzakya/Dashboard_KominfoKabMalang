@@ -149,7 +149,7 @@ def main():
         kpis = calculate_kpis(data, selected_years)
         
         # KPI Section
-        render_section_header("📊  Indikator Utama Stunting")
+        render_section_header("📊  Indikator Utama Sosial")
 
         render_kpi_cards([
             ("👥", "Total Penerima Bantuan", f"{kpis.get('total_penerima_bantuan', 0):,}", "Orang"),
